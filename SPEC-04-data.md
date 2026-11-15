@@ -58,7 +58,7 @@
 | Its answers | `objectlist` | `{"method":"ans.for_item","askid":19745077}` | `data`: all answers at once (no paging) |
 | Channels | `smartdata.get` | `{"namespace":"item","unit":"RemoteConfig"}` | `data.results.itemChannels.channels` |
 
-**Not available:** a free-text search over questions. The web app's `search_query` parameter is ignored by `ask.new`/`ask.hot` (it's used only in an admin screen). Topics (tags) are the closest thing.
+**Not available:** a list of unanswered questions: the site's lists are only `ask.new`, `ask.hot` and `ask.user_activity` (its `getSectionsConfig`). Stips+'s *Unanswered* (v0.22, #37) reads `ask.new` and keeps the questions whose `answer_count` is 0, looking up to 4 pages further in one load when a page holds none. A free-text search over questions. The web app's `search_query` parameter is ignored by `ask.new`/`ask.hot` (it's used only in an admin screen). Topics (tags) are the closest thing.
 
 **Write and account calls (seen in the web bundle, not yet called; verify in the sign-in round):**
 

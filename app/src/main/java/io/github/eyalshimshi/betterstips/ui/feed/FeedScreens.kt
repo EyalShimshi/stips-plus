@@ -1,5 +1,6 @@
 package io.github.eyalshimshi.betterstips.ui.feed
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,9 +20,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -43,11 +46,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.eyalshimshi.betterstips.SpecialAccounts
 import io.github.eyalshimshi.betterstips.R
 import io.github.eyalshimshi.betterstips.data.model.Channel
 import io.github.eyalshimshi.betterstips.data.model.FeedQuery
@@ -66,6 +75,7 @@ import io.github.eyalshimshi.betterstips.ui.components.SkeletonRows
 import io.github.eyalshimshi.betterstips.ui.components.appViewModel
 import io.github.eyalshimshi.betterstips.ui.components.channelLabel
 import io.github.eyalshimshi.betterstips.ui.components.listItemMotion
+import io.github.eyalshimshi.betterstips.ui.components.tonedColors
 
 @Composable
 fun QuestionList(
@@ -150,7 +160,7 @@ fun windowLabel(window: HotWindow): String = stringResource(
     },
 )
 
-/** New / Hot, channel chips, and the hot window (SPEC-02 §5.1). */
+/** New / Hot, channel chips (and Home's Unanswered, #37, with [showUnanswered]), and the hot window (SPEC-02 §5.1). */
 @Composable
 fun FeedFilters(
     query: FeedQuery,
@@ -158,6 +168,7 @@ fun FeedFilters(
     showChannels: Boolean,
     onChange: (FeedQuery) -> Unit,
     showSort: Boolean = true,
+    showUnanswered: Boolean = false,
 ) {
     Column(
         Modifier
@@ -190,15 +201,21 @@ fun FeedFilters(
             ) {
                 item(key = "all") {
                     FilterChip(
-                        selected = query.channelName == null,
-                        onClick = { onChange(query.copy(channelName = null)) },
+                        selected = query.channelName == null && !query.unanswered,
+                        onClick = { onChange(query.copy(channelName = null, unanswered = false)) },
                         label = { Text(stringResource(R.string.channel_all)) },
                     )
+                }
+                // Stips+'s own category (#37), first after All; one category at a time, as the channels.
+                if (showUnanswered) {
+                    item(key = "unanswered") {
+                        UnansweredChip(selected = query.unanswered) { onChange(query.copy(channelName = null, unanswered = true)) }
+                    }
                 }
                 items(channels, key = { it.id }) { channel ->
                     FilterChip(
                         selected = query.channelName == channel.name,
-                        onClick = { onChange(query.copy(channelName = channel.name)) },
+                        onClick = { onChange(query.copy(channelName = channel.name, unanswered = false)) },
                         label = { Text(channelLabel(channel)) },
                         leadingIcon = { ChannelDot(channel) },
                     )
@@ -222,6 +239,35 @@ fun FeedFilters(
     }
 }
 
+/**
+ * Home's "Unanswered" category (#37). It isn't one of Stips' channels, so it has no channel color: it's Stips+'s own,
+ * with a sparkle and an outline running through Stips+'s colors (green, blue, purple), as Stips+'s badge does.
+ */
+@Composable
+private fun UnansweredChip(selected: Boolean, onClick: () -> Unit) {
+    val colors = tonedColors(SpecialAccounts.STIPS_PLUS_COLORS)
+    val brush = remember(colors) { Brush.horizontalGradient(colors) }
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(stringResource(R.string.channel_unanswered)) },
+        leadingIcon = {
+            Icon(
+                Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(FilterChipDefaults.IconSize)
+                    // The sparkle is drawn in one color, then Stips+'s colors are painted over just it.
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(brush, blendMode = BlendMode.SrcIn)
+                    },
+            )
+        },
+        border = BorderStroke(1.dp, brush),
+    )
+}
 @Composable
 fun ChannelDot(channel: Channel) {
     Box(

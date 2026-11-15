@@ -167,6 +167,7 @@ Stips+ is a fast, native Android app for reading and answering questions on [sti
 | F-113 | Your own answer's swipes are real (#34, v0.21) | P2 | No *Delete* among them: Stips detaches answers, it doesn't delete them |
 | F-114 | The vote you gave, clear (#35, v0.21) | P1 | The picked arrow is green or red on a tint, whatever the score |
 | F-115 | Missing pages say what's missing (#36, v0.21) | P1 | A user, a question, an answer or another page that doesn't exist is named as such |
+| F-116 | Unanswered questions (#37, v0.22) | P1 | A category on Home, first after All: the newest questions no one has answered yet; Live adds new ones |
 
 ## 7. Non-functional requirements
 

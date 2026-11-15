@@ -184,6 +184,7 @@
 | D-152 | **No "delete" swipe on your own answers (#34, v0.21):** Stips lets you detach your answer, not delete it, so *Delete answer* is gone from the left-swipe choices; a saved "Delete" falls back to *Edit*. The ⋮ menu still offers delete where Stips itself allows it (its permissions, e.g. for moderators) | The owner's issue: "This is not real, only detach is real. Delete the option" | Owner (ask), agent |
 | D-153 | **The vote you gave, clear (#35, v0.21):** the arrow you picked is green (up) or red (down) on a circle tinted with it, whatever the score, and pops a little as you tap it; the score turns bold once you voted. The score keeps its own colors (green above zero, red below, #10). The arrows are toggles for TalkBack | The owner's issue: "color the arrow i picked (green or red) regardless of the number itself… make it more clear that I voted" | Owner (ask), agent |
 | D-154 | **What isn't there, named (#36, v0.21):** Stips answers the same `API_ERROR_EOF` for a missing question, user or answer, and Stips+ said "This question was deleted or doesn't exist" for all of them. Now each screen names its own: a profile (and a chat) "This user doesn't exist, or their account was deleted" (with *Go back* on the profile, as the question has), an answer's edit history "This answer…", the question its own, and anything else "This page was deleted or doesn't exist". Signing in says Stips didn't accept the email and password | The owner's issue: "When entering a user that doesn't exist it says 'question doesn't exist'… Search for similar issues" | Owner (ask), agent |
+| D-155 | **Unanswered questions (#37, v0.22):** a category on Home, first after *All* (*All* · *Unanswered* · the channels, one at a time). Stips has no such list (the site's are New, Hot and your own), so Stips+ reads New and keeps only questions with no answers; a page may hold none, so one load looks up to 4 pages further, then calls it the end. It has no channel color: a ✨ and an outline in Stips+'s colors mark it as Stips+'s own. Picked, the hot shelf (and the website-like sections) give way: the list is the screen, with Live | The owner's issue, and his choices: "next to music and animals… first next to everything… not a special color like the rest of the categories… make the chip itself kinda special because it's a category that doesn't exist on the website… no hot questions shelf is needed" | Owner (ask), agent |
 
 ## Next steps
 
@@ -192,13 +193,20 @@
 3. Owner: write to Stips' creator personally (user 2042 on Stips): a short message there, then an email with the details; and/or send the permission request (SPEC-06 §4). It also says how Stips+ makes its requests (D-49) and asks whether that's acceptable; it could also ask whether Stips would mark accounts that use Stips+, from the app's User-Agent (D-116).
 4. Owner: on GitHub, turn on two-factor sign-in and protect `main` (Settings → Branches), and edit issue #12 so it doesn't tie your GitHub account to your Stips account (#14).
 5. Owner: decide #15 part 2 (SPEC-07 §2.3).
-6. Owner: try v0.21: Settings → About → *Show the intro again* (the language comes first; pick עברית or English and the app turns at once), Settings → Appearance → *Language*, a long press on a chat → *Pin* (and a sixth), voting up and down on an answer, a link to a profile that doesn't exist (say stips.co.il/profile/999999999), and swiping your own answer left (no *Delete*). Home's *Update* should offer 0.21 (the browser downloads it).
-7. Owner: if Play Protect ever flags a build again, appeal (MAINTAINING.md "Play Protect").
-8. Owner: if you want to know what shows you as online (#19), watch your dot from a second account while Stips+ stays closed with phone notifications on (SPEC-04 §2.14).
-9. Owner: when a notice from Stips' team arrives (a removal, a report's outcome, a note), check that Stips+ labels it right and that its phone notification opens it in full; if not, turn on expert mode, tap { } on it, and send me what it shows (D-82).
-10. Candidates: "Upload a picture on imgbb" in the link dialog (SPEC-07 §2.3 a); the Android 17 emulator in the release check; "Add to home screen" for one question or chat; stacking two easy replies in one answer; an optional "instant" mode for notifications with the screen off; gentle hints from the rule book while writing; a question's own edit history.
+6. Owner: try v0.22: Home → *Unanswered* (after *All*): only questions with no answers, no hot shelf, Live adding new ones; scroll down for more; then *All* and a channel again.
+7. Owner: try v0.21 if you haven't: Settings → About → *Show the intro again* (the language comes first; pick עברית or English and the app turns at once), Settings → Appearance → *Language*, a long press on a chat → *Pin* (and a sixth), voting up and down on an answer, a link to a profile that doesn't exist (say stips.co.il/profile/999999999), and swiping your own answer left (no *Delete*). Home's *Update* should offer 0.21 (the browser downloads it).
+8. Owner: if Play Protect ever flags a build again, appeal (MAINTAINING.md "Play Protect").
+9. Owner: if you want to know what shows you as online (#19), watch your dot from a second account while Stips+ stays closed with phone notifications on (SPEC-04 §2.14).
+10. Owner: when a notice from Stips' team arrives (a removal, a report's outcome, a note), check that Stips+ labels it right and that its phone notification opens it in full; if not, turn on expert mode, tap { } on it, and send me what it shows (D-82).
+11. Candidates: "Upload a picture on imgbb" in the link dialog (SPEC-07 §2.3 a); the Android 17 emulator in the release check; "Add to home screen" for one question or chat; stacking two easy replies in one answer; an optional "instant" mode for notifications with the screen off; gentle hints from the rule book while writing; a question's own edit history.
 
 ## Implementation notes
+
+### Twenty-second build (v0.22, Unanswered questions; #37)
+
+| Spec says / the site does | v0.22 does | Why / next step |
+|---|---|---|
+| The site's lists: New, Hot, your own; no unanswered list | Home's *Unanswered* category: New, only questions with no answers (D-155) | The owner's issue |
 
 ### Twenty-first build (v0.21, the language first, pinned chats, clear votes, what isn't there named; #32–#36)
 

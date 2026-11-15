@@ -204,6 +204,10 @@ The log never contains request parameters, cookies, tokens or text the user wrot
 - **Votes (#35, D-153):** `VoteButton` in QuestionScreen.kt; `voteUpColor`, `voteDownColor` and `voteScoreColor` share their colors (Components.kt).
 - **Not found (#36, D-154):** Stips answers `API_ERROR_EOF` for anything missing. `errorMessage(error, notFound)` and `ErrorCard(…, notFound = …)` take the words to use; a new screen that loads one thing should pass its own (`error_not_found_question`, `_user`, `_answer`), else the default says "This page…". Where retrying can't help, show a `MessageCard` with *Go back*, as the question and profile screens do.
 
+## The Unanswered category (v0.22)
+
+- **Unanswered (#37, D-155):** `FeedQuery.unanswered` asks for New (`ask.new`) and `FeedRules.shows` keeps the questions with `answer_count` 0, in `FeedViewModel` (loads, the cached first page, Live). A load looks up to `FeedRules.UNANSWERED_PAGES_PER_LOAD` pages (4) when a page holds none, then ends the list, so a quiet hour can't spend the request budget. If Stips ever adds its own list of unanswered questions, use it in `StipsRepository.feedPage` and drop the filter. The chip is `UnansweredChip` in FeedScreens.kt; Home hides the hot shelf and the website-like sections while it's picked.
+
 ## Data files
 
 | File | What | Rule |

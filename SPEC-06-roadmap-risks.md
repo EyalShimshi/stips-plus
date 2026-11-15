@@ -22,6 +22,7 @@
 | M3.15 v0.19 | Share to chats (up to five, text only) in place of opening shared links; a message's menu with *Forward* and *Share*; bigger flowers on answers; the creator's badge on his profile only; *Buy me a coffee*; the app's page moves to the owner's site, www.shimshii.com | Passing something on to friends on Stips works as in WhatsApp |
 | M3.16 v0.20 | Updates through the browser, without the permission to install apps; the intro on reinstalling, with the settings the backup restored; the site's certificate | Play Protect doesn't call Stips+ harmful, and the site doesn't look unsafe |
 | M3.17 v0.21 | #32: the language first in the intro, and in Settings; #33: pinned chats; #34: no fake delete swipe; #35: the vote you gave, clear; #36: missing pages say what's missing | The app speaks the reader's language from the first screen; chats you care about stay on top |
+| M3.18 v0.22 | #37: the Unanswered category on Home | Answerers find questions that are still waiting |
 | M4 Public | Only with Stips' written permission | Playbook §7 checklist, README in Hebrew and English |
 
 ## 2. Spikes

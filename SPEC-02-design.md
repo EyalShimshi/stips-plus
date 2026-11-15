@@ -65,7 +65,7 @@ flowchart TD
 ```
 ┌──────────────────────────────────────┐
 │ ( 🔍 Search a topic            ) 🔔² │  pill + notifications bell with badge
-│ (All) (● Music) (● Studies) (● Tech)…│  channel chips, scroll
+│ (All) (✨Unanswered) (● Music) (● Stu…│  channel chips, scroll; Unanswered (v0.22)
 │ Hot right now                See all │
 │ ┌────────────────┐ ┌───────────      │  5 cards, 280×196 dp, snap scroll
 │ │ cover photo  1 │ │ cover…          │  rank badge, dark gradient,
@@ -87,6 +87,7 @@ flowchart TD
 - **A newer Stips+ (v0.18, D-134):** above everything, a primaryContainer card with ⟳: "Stips+ 0.18.32 is out", a line (it downloads from GitHub, then Android asks to confirm), and *What's new* · *Later* · *Update* (filled). While downloading, "Downloading… 42%" and a bar; when ready, *Install*. *Later* hides it until the next build. **Since v0.20 (D-145):** *Update* opens the APK in the browser, which downloads it; the line reads "Your browser downloads it from GitHub. Open the file, and Android asks you to confirm the update." No progress bar or *Install* any more.
 - **After pulling to refresh (v0.18, D-131):** the rows change in place; only Live and the entry check slide new ones in.
 - **Tips (v0.18, D-138):** as Home shows, the first question in sight slides most of the way right, with a dark pill over it ("Swipe right: Pin or unpin"), back, then left; afterwards a pill under the Live chip, "Long-press Live to choose how often it checks". Each once, unless it's used first (three times at most until v0.20, D-149).
+- **Unanswered (v0.22, D-155):** the chip row reads *All* · *Unanswered* · the channels. *Unanswered* is Stips+'s own category, so it has no channel's color dot: a ✨ and a 1 dp outline in Stips+'s colors (green → blue → purple, toned for the theme, as Stips+'s badge), and the usual secondaryContainer when picked. One category at a time, as the channels. Picked, Home is just the list: no hot shelf (and no sections in the website-like layout), "Unanswered questions" over it with the Live chip, newest first, only questions with no answers; Live adds new ones on top. More load as you scroll; when a few pages of New hold none, "That's everything for now". Empty: "No unanswered questions right now". Hiding the chip row returns to *All*.
 
 ### 5.2 Question (compact hero)
 

@@ -948,4 +948,8 @@
     <string name="language_system_short">מערכת</string>
     <string name="settings_language">שפה</string>
     <string name="settings_language_summary">\"מערכת\" היא שפת הטלפון (%1$s).</string>
+    <!-- v0.22: Home's Unanswered category (#37) -->
+    <string name="channel_unanswered">ללא תשובות</string>
+    <string name="unanswered_questions">שאלות ללא תשובות</string>
+    <string name="empty_unanswered">אין כרגע שאלות ללא תשובות</string>
 </resources>

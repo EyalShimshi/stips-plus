@@ -352,6 +352,11 @@ data class FeedQuery(
     val channelName: String? = null,
     val topic: String? = null,
     val myList: MyList? = null,
+    /**
+     * Home's "Unanswered" category (#37): New, keeping only questions no one answered yet. Stips has no such list, so
+     * the app filters New's pages itself (FeedRules).
+     */
+    val unanswered: Boolean = false,
 ) {
     /** The site offers now/today/week on the main list, and week/month inside a channel or topic. */
     val hotWindows: List<HotWindow>
@@ -363,11 +368,11 @@ data class FeedQuery(
 
     fun normalized(): FeedQuery = if (window in hotWindows) this else copy(window = hotWindows.first())
 
-    /** A short stable key for caching this list's first page. */
+    /** A short stable key for caching this list's first page; the lists before #37 keep theirs. */
     val cacheKey: String
         get() = listOf(
             sort.name, if (sort == FeedSort.Hot) window.name else "", channelName.orEmpty(), topic.orEmpty(), myList?.name.orEmpty(),
-        ).joinToString("|")
+        ).joinToString("|") + if (unanswered) "|unanswered" else ""
 }
 
 /** A photo from Stips' own gallery (`photos.tag_gallery`), offered as a question's cover. */

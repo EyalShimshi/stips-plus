@@ -910,4 +910,8 @@
     <string name="language_system_short">System</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_summary">System follows the phone\'s language (%1$s).</string>
+    <!-- v0.22: Home's Unanswered category (#37) -->
+    <string name="channel_unanswered">Unanswered</string>
+    <string name="unanswered_questions">Unanswered questions</string>
+    <string name="empty_unanswered">No unanswered questions right now</string>
 </resources>

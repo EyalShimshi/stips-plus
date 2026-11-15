@@ -210,11 +210,12 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // Home's layout (#8). Picking a channel in the website-like layout shows that channel's hot and new questions.
+    // The Unanswered category (#37) is a list of its own in every layout, without the hot questions: they have answers.
     val layout = settings.homeLayout
-    val showsSections = layout == HomeLayout.LikeWebsite && query.channelName == null
-    val showsHot = layout != HomeLayout.NewOnly
+    val showsSections = layout == HomeLayout.LikeWebsite && query.channelName == null && !query.unanswered
+    val showsHot = layout != HomeLayout.NewOnly && !query.unanswered
     val showsNew = !showsSections
-    fun loadsNew(next: FeedQuery) = !(layout == HomeLayout.LikeWebsite && next.channelName == null)
+    fun loadsNew(next: FeedQuery) = !(layout == HomeLayout.LikeWebsite && next.channelName == null && !next.unanswered)
 
     // Tapping Home again scrolls back to the top (v0.12) and reloads it, like entering it again (v0.13, #10).
     ScrollToTopOnReselect(Routes.HOME, listState) {
@@ -242,10 +243,10 @@ fun HomeScreen(
     LaunchedEffect(query.channelName, showsHot, settings.hotWindow) {
         if (showsHot) hotVm.load(query.channelName, settings.hotWindow)
     }
-    // With the chips hidden there's no way to leave a channel, so hiding them goes back to all of Stips.
+    // With the chips hidden there's no way to leave a channel (or Unanswered, #37), so hiding them goes back to all of Stips.
     LaunchedEffect(settings.showChannelChips) {
-        if (!settings.showChannelChips && query.channelName != null) {
-            val all = query.copy(channelName = null)
+        if (!settings.showChannelChips && (query.channelName != null || query.unanswered)) {
+            val all = query.copy(channelName = null, unanswered = false)
             feedVm.setQuery(all, loadNow = loadsNew(all))
         }
     }
@@ -354,6 +355,7 @@ fun HomeScreen(
                         channels,
                         showChannels = true,
                         showSort = false,
+                        showUnanswered = true,
                         onChange = {
                             feedVm.setQuery(it, loadNow = loadsNew(it))
                             scope.launch { listState.scrollToItem(0) }
@@ -377,6 +379,7 @@ fun HomeScreen(
             if (showsNew) {
                 item(key = "new-header") {
                     NewHeader(
+                        title = stringResource(if (query.unanswered) R.string.unanswered_questions else R.string.new_questions),
                         live = settings.autoRefreshNew,
                         seconds = settings.liveIntervalSeconds,
                         tip = liveTip,
@@ -411,7 +414,7 @@ fun HomeScreen(
             QuestionList(
                 state = state,
                 channels = channels,
-                emptyTitle = stringResource(R.string.empty_feed),
+                emptyTitle = stringResource(if (query.unanswered) R.string.empty_unanswered else R.string.empty_feed),
                 onOpen = { onOpenQuestion(it.id) },
                 onRefresh = {
                     feedVm.refresh()
@@ -603,9 +606,12 @@ private fun HotCard(question: Question, rank: Int, seed: Int?, onClick: () -> Un
     }
 }
 
-/** "New questions" and the Live chip: tap turns Live on or off, long-press sets how often it checks; [tip] says so (#28). */
+/**
+ * "New questions" (or "Unanswered questions", #37) and the Live chip: tap turns Live on or off, long-press sets how
+ * often it checks; [tip] says so (#28).
+ */
 @Composable
-private fun NewHeader(live: Boolean, seconds: Int, tip: TipState, onToggleLive: () -> Unit, onLiveOptions: () -> Unit) {
+private fun NewHeader(title: String, live: Boolean, seconds: Int, tip: TipState, onToggleLive: () -> Unit, onLiveOptions: () -> Unit) {
     Column {
         Row(
             Modifier
@@ -613,7 +619,7 @@ private fun NewHeader(live: Boolean, seconds: Int, tip: TipState, onToggleLive: 
                 .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SectionTitle(stringResource(R.string.new_questions), Modifier.weight(1f))
+            SectionTitle(title, Modifier.weight(1f))
             LiveChip(live = live, seconds = seconds, onToggle = onToggleLive, onOptions = onLiveOptions)
         }
         TipPill(tip, Modifier.align(Alignment.End).padding(end = 8.dp), expand = true)

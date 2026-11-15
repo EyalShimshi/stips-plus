@@ -8,6 +8,7 @@ import io.github.eyalshimshi.betterstips.data.model.FeedQuery
 import io.github.eyalshimshi.betterstips.data.model.Question
 import io.github.eyalshimshi.betterstips.ui.components.asApiException
 import io.github.eyalshimshi.betterstips.util.AutoRefresh
+import io.github.eyalshimshi.betterstips.util.FeedRules
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -98,7 +99,7 @@ class FeedViewModel(
         if (s.loading || s.refreshing || s.items.isEmpty()) return 0
         val query = _query.value
         val fresh = try {
-            repository.feedPage(query, 1)
+            repository.feedPage(query, 1).filter { FeedRules.shows(query, it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -135,24 +136,37 @@ class FeedViewModel(
                     )
                 }
                 if (showCache) {
-                    val cached = repository.cachedFirstPage(query)
+                    val cached = repository.cachedFirstPage(query).filter { FeedRules.shows(query, it) }
                     if (cached.isNotEmpty()) _state.update { it.copy(items = cached) }
                 }
             } else {
                 _state.update { it.copy(loadingMore = true, error = null) }
             }
             try {
-                val next = if (reset) 1 else page + 1
-                val list = repository.feedPage(query, next)
-                page = next
-                if (next == 1) pageOneAt = System.currentTimeMillis()
+                // Questions already shown aren't added twice; the unanswered category (#37) keeps only some of each
+                // page, so it looks a few pages further when one has nothing to add.
+                val known: Set<Long> = if (reset) emptySet() else _state.value.items.mapTo(HashSet()) { it.id }
+                val seen = HashSet<Long>()
+                val found = mutableListOf<Question>()
+                var next = if (reset) 1 else page + 1
+                var looked = 0
+                var lastEmpty = false
+                do {
+                    if (looked > 0) next++
+                    val list = repository.feedPage(query, next)
+                    page = next
+                    looked++
+                    if (next == 1) pageOneAt = System.currentTimeMillis()
+                    lastEmpty = list.isEmpty()
+                    list.filterTo(found) { FeedRules.shows(query, it) && it.id !in known && seen.add(it.id) }
+                } while (FeedRules.keepLooking(query, found.size, lastEmpty, looked))
                 _state.update { s ->
                     s.copy(
-                        items = if (reset) list else (s.items + list).distinctBy { it.id },
+                        items = if (reset) found else (s.items + found).distinctBy { it.id },
                         loading = false,
                         refreshing = false,
                         loadingMore = false,
-                        endReached = list.isEmpty(),
+                        endReached = FeedRules.ended(query, found.size, lastEmpty),
                         error = null,
                         swapped = reset && refreshing,
                     )

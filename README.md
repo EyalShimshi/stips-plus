@@ -8,6 +8,7 @@
 
 - **Your language:** Hebrew or English, picked on the intro's first screen or in Settings → Appearance, or the phone's own. On Android 13 and newer it's also in the phone's Settings → Apps → Stips+ → Language.
 - **Home:** the five hottest questions as big cards, then the newest questions. **Live** brings new questions in by themselves, every 5 to 30 seconds (long-press the Live chip to set it); pull down to reload. Switching to Home, or coming back to the app on it, brings new questions in too. Search finds topics and people.
+- **Unanswered questions:** the ✨ *Unanswered* chip, right after *All*, shows only the newest questions no one has answered yet, so you can be the first. Stips itself has no such list; Stips+ finds them in the new questions. Live adds new ones as they come.
 - **Home your way** (Settings → Home): the default, a layout **like the website** (hot questions, then today's questions by topic), or **new questions only**; 3, 5 or 10 hot cards, from now, today or this week; the channel chips on or off; which tab the app opens on.
 - **Home-screen widgets:** "Hot right now" shows the hottest questions, and **Chats** shows your latest chats with unread counts. Tap a question or a chat to open it, or ⟳ to refresh. Add them from your launcher's widgets, or from Settings → Widgets.
 - **Launcher shortcuts:** touch and hold the app icon for **Hot** and **Chats**.
