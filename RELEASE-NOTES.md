@@ -1,27 +1,27 @@
-## Stips+ 0.20: no more Play Protect warning, and the intro on reinstalling
+## Stips+ 0.21: your language first, pinned chats, clearer votes
 
-**Play Protect**
-- Play Protect called builds 31 and 32 harmful. They were the first that could install their own updates, and to Play Protect a new app that downloads and installs apps looks like malware. From this build, Stips+ can't install apps at all, and doesn't ask for that permission.
-- *Update* (on Home, and in Settings → About) now opens the new version in your browser, which downloads it. Open the file and Android asks you to confirm the update, as on the first install.
-- Every build is now checked for this before it's published: it fails if it asks to install apps.
+**Language (#32)**
+- The intro now starts with **Choose a language**: the phone's language, עברית or English. Picking one switches the app right away.
+- You can change it any time in Settings → Appearance → *Language*. On Android 13 and newer it's also in the phone's Settings → Apps → Stips+ → Language.
 
-**Reinstalling**
-- After a reinstall the intro shows again, and your settings come back from Android's backup as before, already chosen in the intro. Until now the backup also brought back "the intro was seen", so it was skipped and you landed signed out. (Build 33 turned backups off; build 34 keeps them and fixes the intro instead.)
+**Chats (#33)**
+- Long-press a chat → *Pin* to keep it on top. Up to five; the latest pin goes first, and a pin shows by its time. Long-press again → *Unpin*.
 
-**Tips**
-- Each tip shows once. Updating the app no longer brings them all back (until now each could show three times, once per app start, and every update restarts the app). A reinstall shows them again, with the intro.
+**Answers**
+- **Votes (#35):** the arrow you picked is green (up) or red (down) on a light circle, whatever the score, and it pops as you tap it. The score turns bold once you've voted.
+- **Swipes (#34):** *Delete answer* is gone from the left swipe on your own answer. Stips doesn't let you delete your answers, only detach them. If you had picked it, the swipe is back to *Edit*.
 
-**The site**
-- www.shimshii.com has its security certificate now, so browsers don't warn about it any more.
+**Missing pages (#36)**
+- A profile that doesn't exist now says "This user doesn't exist, or their account was deleted", with *Go back*, instead of talking about a question. Chats, an answer's edit history and other pages name what's missing too.
 
 **To test**
-1. Install this build over 0.19, from this page or with Home's update card. Play Protect may offer to scan it, but it shouldn't call it harmful.
-2. Uninstall Stips+ and install this APK again. The intro should show, with your look and Home settings already chosen (if Android had backed them up).
-3. Settings → About → *Check for updates* says you have the newest version. When the next build is out, *Update* opens it in the browser.
-4. Open www.shimshii.com/stips-plus on your phone. There should be no warning.
+1. Settings → About → *Show the intro again*: the language comes first. Pick English, then עברית: the app should switch each time, staying on that step.
+2. Settings → Appearance → *Language*: the same three choices.
+3. Chats: long-press a chat → *Pin*. Pin five, then try a sixth. Unpin one.
+4. Vote up and down on an answer: the arrow you picked should be green or red on a circle, and tapping it again removes the vote.
+5. Swipe your own answer to the left: Settings → Questions and answers shouldn't offer *Delete* any more.
+6. Send yourself (notes to self) the link https://stips.co.il/profile/999999999 and tap it: the profile should say the user doesn't exist, with *Go back*.
 
 **Heads-up**
-- 0.18 and 0.19 can still install this build with their update card: it's the last update they install themselves.
-- If Play Protect still flags this build, you can ask Google to review it (MAINTAINING.md, "Play Protect").
-- Tick **Enforce HTTPS** in the `EyalShimshi.github.io` repository → Settings → Pages.
+- On Android 12 and older, notifications and widgets switch to the new language after the app restarts.
 - This release waits for your approval: in the GitHub app, open the run → *Review deployments* → *Approve*.

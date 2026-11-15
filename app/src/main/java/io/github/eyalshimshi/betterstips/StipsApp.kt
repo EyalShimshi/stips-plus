@@ -17,6 +17,7 @@ import io.github.eyalshimshi.betterstips.data.FeedCache
 import io.github.eyalshimshi.betterstips.data.ImageLinkResolver
 import io.github.eyalshimshi.betterstips.data.LinkPreviews
 import io.github.eyalshimshi.betterstips.data.Tutorials
+import io.github.eyalshimshi.betterstips.data.PinnedChats
 import io.github.eyalshimshi.betterstips.data.ReadMarks
 import io.github.eyalshimshi.betterstips.data.ReplyTargets
 import io.github.eyalshimshi.betterstips.data.SavedStore
@@ -130,6 +131,9 @@ class AppContainer(private val app: Application) {
 
     /** Feature tips (#28): which showed, and which the user has done. */
     val tutorials = Tutorials(app)
+
+    /** Chats pinned on top of Chats (#33), kept on this phone. */
+    val pinnedChats = PinnedChats(app)
 
     /** The "Hot right now" widget's list (D-51). */
     val hotWidget = HotWidgetFeed(app, repository, appScope)
@@ -256,7 +260,8 @@ class StipsApp : Application() {
         private set
 
     override fun attachBaseContext(base: android.content.Context) {
-        super.attachBaseContext(base)
+        // In the language picked in Stips+ (#32), before Android 13; from 13 Android applies it itself.
+        super.attachBaseContext(io.github.eyalshimshi.betterstips.util.AppLanguage.wrap(base))
         // Before the libraries' start-up providers run (WorkManager's crashed v0.6-v0.7 there, #7), so a crash at
         // that point still leaves a report.
         io.github.eyalshimshi.betterstips.crash.CrashReporter.install(this)

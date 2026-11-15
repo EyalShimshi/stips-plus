@@ -151,7 +151,7 @@ fun SendToScreen(text: String, onClose: () -> Unit, onSent: (List<Author>, List<
     val container = LocalAppContainer.current
     val session by container.session.session.collectAsStateWithLifecycle()
     val account by container.session.account.collectAsStateWithLifecycle()
-    val chatsVm = appViewModel { ChatsViewModel(it.repository, it.session) }
+    val chatsVm = appViewModel { ChatsViewModel(it.repository, it.session, it.pinnedChats) }
     val chats by chatsVm.state.collectAsStateWithLifecycle()
     val vm = appViewModel { SendToViewModel(it.repository) }
     val state by vm.state.collectAsStateWithLifecycle()

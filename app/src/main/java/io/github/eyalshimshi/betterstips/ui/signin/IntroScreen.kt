@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -95,15 +98,17 @@ import io.github.eyalshimshi.betterstips.ui.settings.OptionsDialog
 import io.github.eyalshimshi.betterstips.ui.settings.QuestionSwipePicture
 import io.github.eyalshimshi.betterstips.ui.settings.RepliesPreview
 import io.github.eyalshimshi.betterstips.ui.settings.Swatch
+import io.github.eyalshimshi.betterstips.ui.settings.languageLabel
+import io.github.eyalshimshi.betterstips.util.AppLanguage
 import io.github.eyalshimshi.betterstips.util.ReplyRefs
 import io.github.eyalshimshi.betterstips.util.SwipeRules
 
-/** The intro's steps, in order (#12); swipes since v0.16. */
-private enum class IntroStep { Welcome, Look, Home, Replies, Swipes, Account, Notifications, Done }
+/** The intro's steps, in order (#12); swipes since v0.16, the language first since v0.21 (#32). */
+private enum class IntroStep { Language, Welcome, Look, Home, Replies, Swipes, Account, Notifications, Done }
 
 /**
- * The first screen after installing (#8). Since #12 it's a short intro that sets the app up: the look, what Home
- * shows, how replies show, then signing in (or looking around as a guest) and phone notifications. Each step shows
+ * The first screen after installing (#8). Since #12 it's a short intro that sets the app up: the language (#32), the
+ * look, what Home shows, how replies show, then signing in (or looking around as a guest) and phone notifications. Each step shows
  * what its choices do, and they apply at once. It covers the app until it's done; links and shortcuts that open
  * the app skip it, and Settings → About shows it again (without the sign-in step when signed in).
  */
@@ -117,7 +122,7 @@ fun IntroScreen(onFinish: () -> Unit, modifier: Modifier = Modifier) {
     val snackbar = remember { SnackbarHostState() }
     // Before any branch: Android's answer about the notification permission comes back to this.
     val toggleNotifications = rememberPhoneNotificationsToggle(snackbar)
-    var step by rememberSaveable { mutableStateOf(IntroStep.Welcome) }
+    var step by rememberSaveable { mutableStateOf(IntroStep.Language) }
     val startedSignedIn = rememberSaveable { session.signedIn }
     val steps = remember(startedSignedIn, session.signedIn) {
         IntroStep.entries.filter { candidate ->
@@ -192,6 +197,7 @@ fun IntroScreen(onFinish: () -> Unit, modifier: Modifier = Modifier) {
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         when (shown) {
+                            IntroStep.Language -> LanguageStep()
                             IntroStep.Welcome -> WelcomeStep()
                             IntroStep.Look -> LookStep(settings)
                             IntroStep.Home -> HomeStep(settings)
@@ -211,6 +217,9 @@ fun IntroScreen(onFinish: () -> Unit, modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     when (step) {
+                        IntroStep.Language -> {
+                            Button(onClick = { next() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.intro_next)) }
+                        }
                         IntroStep.Welcome -> {
                             TextButton(onClick = { skip() }) { Text(stringResource(R.string.intro_skip)) }
                             Button(onClick = { next() }) { Text(stringResource(R.string.intro_start)) }
@@ -377,6 +386,66 @@ private fun SwitchLine(title: String, summary: String?, checked: Boolean, onChan
     }
 }
 
+/**
+ * The language (#32), first, so everything after reads in it: the phone's, Hebrew or English, each by its own name.
+ * Picking one applies at once (the screen is made again in it). The title shows in both languages, so a reader of
+ * either finds the way.
+ */
+@Composable
+private fun LanguageStep() {
+    val context = LocalContext.current
+    var picked by remember { mutableStateOf(AppLanguage.current(context)) }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        stringResource(R.string.app_name),
+        style = MaterialTheme.typography.displaySmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+    )
+    // Exactly "Choose a language" on its own in English: the launch test looks for it on a fresh install.
+    Text(
+        stringResource(R.string.intro_language_title),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.semantics { heading() },
+    )
+    Text(
+        stringResource(R.string.intro_language_other),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
+        stringResource(R.string.intro_language_body),
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        AppLanguage.Choice.entries.forEach { choice ->
+            LanguageOption(languageLabel(choice), selected = picked == choice) {
+                picked = choice
+                AppLanguage.activityOf(context)?.let { AppLanguage.set(it, choice) }
+            }
+        }
+    }
+}
+
+/** One language to pick: a large row with a radio button, tinted when it's the one. */
+@Composable
+private fun LanguageOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Spacer(Modifier.width(12.dp))
+        Text(label, style = MaterialTheme.typography.titleMedium)
+    }
+}
 @Composable
 private fun WelcomeStep() {
     Spacer(Modifier.height(8.dp))
@@ -386,7 +455,7 @@ private fun WelcomeStep() {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
     )
-    // Exactly "Welcome" on its own: the launch test looks for it on a fresh install.
+    // Until v0.21 the launch test looked for this "Welcome"; it looks for the language step's title now (#32).
     Text(
         stringResource(R.string.welcome_title),
         style = MaterialTheme.typography.headlineSmall,

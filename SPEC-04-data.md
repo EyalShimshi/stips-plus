@@ -39,7 +39,7 @@
 | `error_code` | Meaning |
 |---|---|
 | `API_ERROR_GENERAL` | Generic failure; `error_msg` is Hebrew text (for example, missing permission) |
-| `API_ERROR_EOF` | The item doesn't exist (deleted question) |
+| `API_ERROR_EOF` | The item doesn't exist: a deleted question, a user or an answer that isn't there (the same code for all; the screen says which, D-154) |
 | `API_ERROR_BANNED` | The signed-in user is banned |
 
 ### 2.3 Calls

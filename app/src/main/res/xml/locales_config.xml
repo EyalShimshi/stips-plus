@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The languages Stips+ speaks (#32), for Android 13+'s per-app language: the phone's Settings → Apps → Stips+ →
+  Language offers these, as the intro and Settings → Appearance do. Hebrew's strings are in values-iw.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="he" />
+</locale-config>

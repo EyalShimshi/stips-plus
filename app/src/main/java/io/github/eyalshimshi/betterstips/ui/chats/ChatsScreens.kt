@@ -62,8 +62,10 @@ import io.github.eyalshimshi.betterstips.ui.components.shareText
 import io.github.eyalshimshi.betterstips.util.ShareRules
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -224,7 +226,7 @@ private val reportReasons = listOf(
 fun ChatsScreen(onOpenConversation: (Long, String) -> Unit, onSignIn: () -> Unit) {
     val container = LocalAppContainer.current
     val session by container.session.session.collectAsStateWithLifecycle()
-    val vm = appViewModel { ChatsViewModel(it.repository, it.session) }
+    val vm = appViewModel { ChatsViewModel(it.repository, it.session, it.pinnedChats) }
     val state by vm.state.collectAsStateWithLifecycle()
     // New or read messages change the unread count (checked every 10 s), and coming back from a chat reads some:
     // either way the list updates by itself (#6).
@@ -263,6 +265,15 @@ fun ChatsScreen(onOpenConversation: (Long, String) -> Unit, onSignIn: () -> Unit
     // The account itself, for notes to self (#20).
     val me = session.profile?.avatar ?: myId?.let { Author("", it, null, anonymous = false, online = false) }
     val notesName = stringResource(R.string.notes_title)
+    // Pinned chats on top (#33), the latest pin first; at most five.
+    val shown = remember(state.conversations, state.pinned) { ChatRules.withPinned(state.conversations, state.pinned) }
+    val pinnedIds: Set<Long?> = remember(state.pinned) { state.pinned.map { it.other.userId }.toSet() }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val pinFullText = stringResource(R.string.chat_pin_full, ChatRules.MAX_PINNED)
+    val togglePin: (Conversation) -> Unit = { conversation ->
+        if (!vm.togglePin(conversation)) scope.launch { snackbar.showSnackbar(pinFullText) }
+    }
     // A tip (#28): the first circle on the shelf is the chat with yourself. Once the shelf is on screen.
     val tipsAllowed = LocalTipsAllowed.current
     val notesTip = rememberTipState()
@@ -287,6 +298,7 @@ fun ChatsScreen(onOpenConversation: (Long, String) -> Unit, onSignIn: () -> Unit
                 actions = { DmSettingsButton { dmSettings = true } },
             )
         },
+        snackbarHost = { SwipeAwaySnackbarHost(snackbar) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         if (!session.signedIn) {
@@ -313,13 +325,19 @@ fun ChatsScreen(onOpenConversation: (Long, String) -> Unit, onSignIn: () -> Unit
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 24.dp)) {
                 item(key = "search") { ChatsSearchField(query, onQuery = { query = it }) }
                 if (query.isNotBlank()) {
-                    val chats = ChatRules.matching(state.conversations, query, myId, notesName)
+                    val chats = ChatRules.matching(shown, query, myId, notesName)
                     val inChats = chats.mapNotNull { it.other.userId }.toSet()
                     val others = people.results.filter { it.userId != null && it.userId !in inChats }.distinctBy { it.userId }
                     if (chats.isNotEmpty()) {
                         item(key = "label-chats") { SearchLabel(stringResource(R.string.chats_search_chats)) }
                         items(chats, key = { "c${it.other.userId}" }) { conversation ->
-                            ConversationRow(conversation, notes = ChatRules.isNotes(conversation.other.userId, myId), me = me) { open(conversation) }
+                            ConversationRow(
+                                conversation,
+                                notes = ChatRules.isNotes(conversation.other.userId, myId),
+                                me = me,
+                                pinned = conversation.other.userId in pinnedIds,
+                                onPin = { togglePin(conversation) },
+                            ) { open(conversation) }
                         }
                     }
                     if (others.isNotEmpty()) {
@@ -363,7 +381,7 @@ fun ChatsScreen(onOpenConversation: (Long, String) -> Unit, onSignIn: () -> Unit
                     }
                 }
                 when {
-                    state.loading && state.conversations.isEmpty() -> item(key = "loading") {
+                    state.loading && shown.isEmpty() -> item(key = "loading") {
                         Box(
                             Modifier
                                 .fillMaxWidth()
@@ -372,12 +390,18 @@ fun ChatsScreen(onOpenConversation: (Long, String) -> Unit, onSignIn: () -> Unit
                         ) { CircularProgressIndicator() }
                     }
                     error != null && state.conversations.isEmpty() -> item(key = "error") { ErrorCard(error, onRetry = { vm.retry() }) }
-                    state.conversations.isEmpty() -> item(key = "empty") {
+                    shown.isEmpty() -> item(key = "empty") {
                         MessageCard(stringResource(R.string.chats_empty), stringResource(R.string.chats_empty_body), null, null)
                     }
                 }
-                items(state.conversations, key = { it.other.userId ?: 0L }) { conversation ->
-                    ConversationRow(conversation, notes = ChatRules.isNotes(conversation.other.userId, myId), me = me) { open(conversation) }
+                items(shown, key = { it.other.userId ?: 0L }) { conversation ->
+                    ConversationRow(
+                        conversation,
+                        notes = ChatRules.isNotes(conversation.other.userId, myId),
+                        me = me,
+                        pinned = conversation.other.userId in pinnedIds,
+                        onPin = { togglePin(conversation) },
+                    ) { open(conversation) }
                 }
                 // Older chats are on the next page, which loads by itself on the way here (v0.17, build 30).
                 if (state.conversations.isNotEmpty() && !state.end) {
@@ -586,9 +610,19 @@ private fun DmSettingsButton(onClick: () -> Unit) {
     }
 }
 
-/** A chat in the list. Notes to self (#20) say so, with the bookmark, and never count as unread. */
+/**
+ * A chat in the list. Notes to self (#20) say so, with the bookmark, and never count as unread. A long press offers to
+ * pin it on top, or unpin it ([onPin], #33); a pinned chat shows a pin by its time.
+ */
 @Composable
-private fun ConversationRow(conversation: Conversation, notes: Boolean = false, me: Author? = null, onClick: () -> Unit) {
+private fun ConversationRow(
+    conversation: Conversation,
+    notes: Boolean = false,
+    me: Author? = null,
+    pinned: Boolean = false,
+    onPin: (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     // The message itself, not the carets it opens with (v0.17, build 30).
     val last = remember(conversation.lastMessage) { ReplyRefs.preview(conversation.lastMessage) }
     val preview = if (conversation.lastFromMe && !notes) {
@@ -597,26 +631,69 @@ private fun ConversationRow(conversation: Conversation, notes: Boolean = false, 
         last
     }
     val time = agoText(conversation.time).ifBlank { conversation.timeText.orEmpty() }
-    ListItem(
-        headlineContent = {
-            Text(if (notes) stringResource(R.string.notes_title) else authorName(conversation.other), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        },
-        supportingContent = { Text(preview, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingContent = {
-            if (notes) NotesAvatar(me ?: conversation.other, 48.dp) else PresenceAvatar(conversation.other, 48.dp)
-        },
-        trailingContent = {
-            Column(horizontalAlignment = Alignment.End) {
-                Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (conversation.unread > 0 && !notes) {
-                    Spacer(Modifier.size(4.dp))
-                    Badge { Text(conversation.unread.toString()) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val pinLabel = stringResource(if (pinned) R.string.chat_unpin else R.string.chat_pin)
+    val optionsLabel = stringResource(R.string.chat_options)
+    val unread = conversation.unread > 0 && !notes
+    Box {
+        ListItem(
+            headlineContent = {
+                Text(if (notes) stringResource(R.string.notes_title) else authorName(conversation.other), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            },
+            supportingContent = { Text(preview, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            leadingContent = {
+                if (notes) NotesAvatar(me ?: conversation.other, 48.dp) else PresenceAvatar(conversation.other, 48.dp)
+            },
+            trailingContent = {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (unread || pinned) {
+                        Spacer(Modifier.size(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (pinned) {
+                                Icon(
+                                    Icons.Filled.PushPin,
+                                    contentDescription = stringResource(R.string.chat_pinned),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            if (unread) Badge { Text(conversation.unread.toString()) }
+                        }
+                    }
                 }
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            modifier = Modifier
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClickLabel = if (onPin != null) optionsLabel else null,
+                    onLongClick = if (onPin != null) ({ menuOpen = true }) else null,
+                )
+                .semantics {
+                    if (onPin != null) {
+                        customActions = listOf(
+                            CustomAccessibilityAction(pinLabel) {
+                                onPin()
+                                true
+                            },
+                        )
+                    }
+                },
+        )
+        if (onPin != null) {
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(pinLabel) },
+                    leadingIcon = { Icon(if (pinned) Icons.Outlined.PushPin else Icons.Filled.PushPin, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onPin()
+                    },
+                )
             }
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.clickable(onClick = onClick),
-    )
+        }
+    }
 }
 
 /**
@@ -841,7 +918,7 @@ fun ConversationScreen(userId: Long, name: String, onBack: () -> Unit, onForward
                     replyName = if (replyTo != null && replyTo.fromUserId != null && replyTo.fromUserId == myId) null else title,
                     about = state.about,
                     sending = state.sending,
-                    error = state.sendError?.let { errorMessage(it) },
+                    error = state.sendError?.let { errorMessage(it, R.string.error_not_found_user) },
                     onDraft = vm::setDraft,
                     onCancelReply = vm::cancelReply,
                     onRemoveAbout = vm::removeAbout,
@@ -1137,7 +1214,7 @@ private fun ConversationStart(
                 .padding(24.dp),
             contentAlignment = Alignment.Center,
         ) { CircularProgressIndicator() }
-        error != null && state.messages.isEmpty() -> ErrorCard(error, onRetry = onRetry)
+        error != null && state.messages.isEmpty() -> ErrorCard(error, onRetry = onRetry, notFound = R.string.error_not_found_user)
         state.earlierFailed -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             TextButton(onClick = onLoadEarlier) { Text(stringResource(R.string.chat_earlier_failed), textAlign = TextAlign.Center) }
         }

@@ -25,9 +25,9 @@ object SwipeRules {
     val OTHERS_ANSWER_CHOICES: List<AnswerSwipe> =
         listOf(AnswerSwipe.None, AnswerSwipe.PrivateReply, AnswerSwipe.Report, AnswerSwipe.Hide, AnswerSwipe.HideUser, AnswerSwipe.History)
 
-    /** The choices for swiping your own answer to the left. */
+    /** The choices for swiping your own answer to the left: no delete, which Stips doesn't offer for your answers (#34). */
     val MY_ANSWER_CHOICES: List<AnswerSwipe> =
-        listOf(AnswerSwipe.None, AnswerSwipe.Edit, AnswerSwipe.Detach, AnswerSwipe.Delete, AnswerSwipe.History)
+        listOf(AnswerSwipe.None, AnswerSwipe.Edit, AnswerSwipe.Detach, AnswerSwipe.History)
 
     /**
      * Whether [action] applies to a question: reporting and hiding are for other people's questions, and hiding

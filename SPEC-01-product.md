@@ -162,6 +162,11 @@ Stips+ is a fast, native Android app for reading and answering questions on [sti
 | F-108 | Buy me a coffee (v0.19) | P2 | A button by the credit at the end of Settings |
 | F-109 | Trusted by Play Protect (v0.20) | P0 | Stips+ doesn't ask to install apps or download them, so Play Protect has no reason to call it harmful; CI checks every APK for it |
 | F-110 | The intro on reinstalling (v0.20) | P1 | After uninstalling, installing again shows the intro, with the settings Android's backup brought back already chosen; never the old sign-in |
+| F-111 | The app's language (#32, v0.21) | P1 | The intro's first step and Settings → Appearance pick the phone's language, Hebrew or English; it applies at once |
+| F-112 | Pinned chats (#33, v0.21) | P1 | A long press pins a chat on top of Chats, up to 5; pinned chats stay on top even before their page loads |
+| F-113 | Your own answer's swipes are real (#34, v0.21) | P2 | No *Delete* among them: Stips detaches answers, it doesn't delete them |
+| F-114 | The vote you gave, clear (#35, v0.21) | P1 | The picked arrow is green or red on a tint, whatever the score |
+| F-115 | Missing pages say what's missing (#36, v0.21) | P1 | A user, a question, an answer or another page that doesn't exist is named as such |
 
 ## 7. Non-functional requirements
 

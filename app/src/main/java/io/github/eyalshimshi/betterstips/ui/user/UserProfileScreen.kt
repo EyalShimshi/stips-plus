@@ -124,6 +124,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.eyalshimshi.betterstips.R
 import io.github.eyalshimshi.betterstips.SpecialAccounts
+import io.github.eyalshimshi.betterstips.data.api.ApiException
 import io.github.eyalshimshi.betterstips.data.model.Answer
 import io.github.eyalshimshi.betterstips.data.model.ChartAction
 import io.github.eyalshimshi.betterstips.data.model.ChartPoint
@@ -138,6 +139,7 @@ import io.github.eyalshimshi.betterstips.ui.components.AuthorName
 import io.github.eyalshimshi.betterstips.ui.components.Avatar
 import io.github.eyalshimshi.betterstips.ui.components.BackButton
 import io.github.eyalshimshi.betterstips.ui.components.ErrorCard
+import io.github.eyalshimshi.betterstips.ui.components.MessageCard
 import io.github.eyalshimshi.betterstips.ui.components.ExpertFields
 import io.github.eyalshimshi.betterstips.ui.components.ExpertLine
 import io.github.eyalshimshi.betterstips.ui.components.LinkifiedText
@@ -276,10 +278,12 @@ fun UserProfileScreen(
                 if (profile == null) {
                     item(key = "status") {
                         val error = state.error
-                        if (error != null && !state.loading) {
-                            ErrorCard(error, onRetry = vm::load)
-                        } else {
-                            Box(
+                        when {
+                            // No such user (#36): Stips says so as for a missing question; trying again won't help.
+                            error != null && !state.loading && error.code == ApiException.NOT_FOUND && onBack != null ->
+                                MessageCard(stringResource(R.string.error_not_found_user), null, stringResource(R.string.action_go_back), onBack)
+                            error != null && !state.loading -> ErrorCard(error, onRetry = vm::load, notFound = R.string.error_not_found_user)
+                            else -> Box(
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(64.dp),

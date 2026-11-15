@@ -152,7 +152,8 @@ fun SignInFields(vm: SignInViewModel, state: SignInUiState) {
     val error = state.error
     if (error != null) {
         Text(
-            if (error.code == ApiException.GENERAL && error.serverMessage.isNullOrBlank()) {
+            if ((error.code == ApiException.GENERAL && error.serverMessage.isNullOrBlank()) || error.code == ApiException.NOT_FOUND) {
+                // Stips' "doesn't exist" here can only be about the account (#36).
                 stringResource(R.string.sign_in_failed)
             } else {
                 errorMessage(error)

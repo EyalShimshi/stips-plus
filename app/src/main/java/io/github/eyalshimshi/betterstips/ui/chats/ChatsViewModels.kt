@@ -3,6 +3,7 @@ package io.github.eyalshimshi.betterstips.ui.chats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.eyalshimshi.betterstips.data.ChatReadMarks
+import io.github.eyalshimshi.betterstips.data.PinnedChats
 import io.github.eyalshimshi.betterstips.data.SessionStore
 import io.github.eyalshimshi.betterstips.data.StipsRepository
 import io.github.eyalshimshi.betterstips.data.api.ApiException
@@ -40,13 +41,18 @@ data class ChatsUiState(
     val end: Boolean = false,
     val loadingMore: Boolean = false,
     val moreFailed: Boolean = false,
+    /** Chats pinned on top (#33), the latest pin first, as they last looked; the list's own copies win when loaded. */
+    val pinned: List<Conversation> = emptyList(),
 )
 
-class ChatsViewModel(private val repository: StipsRepository, session: SessionStore) : ViewModel() {
+class ChatsViewModel(private val repository: StipsRepository, session: SessionStore, private val pins: PinnedChats) : ViewModel() {
     private val _state = MutableStateFlow(ChatsUiState())
     val state: StateFlow<ChatsUiState> = _state.asStateFlow()
     private var job: Job? = null
     private var moreJob: Job? = null
+
+    /** The signed-in account, whose pins these are (#33). */
+    private var account: Long? = null
 
     /** Changes when the list starts again from page 1, so a later page asked for before can't land on the new list. */
     private var generation = 0
@@ -57,16 +63,36 @@ class ChatsViewModel(private val repository: StipsRepository, session: SessionSt
     init {
         viewModelScope.launch {
             session.session.map { it.userId }.distinctUntilChanged().collect { userId ->
+                account = userId
                 if (userId == null) {
                     job?.cancel()
                     moreJob?.cancel()
                     generation++
                     _state.value = ChatsUiState()
                 } else {
+                    _state.update { it.copy(pinned = pins.read(userId)) }
                     load(refreshing = false)
                 }
             }
         }
+    }
+
+    /** Pins [chat] on top, or unpins it (#33). False when it can't be pinned: [ChatRules.MAX_PINNED] are already. */
+    fun togglePin(chat: Conversation): Boolean {
+        val owner = account ?: return true
+        val id = chat.other.userId ?: return true
+        val current = _state.value.pinned
+        val next = if (current.any { it.other.userId == id }) ChatRules.unpin(current, id) else (ChatRules.pin(current, chat) ?: return false)
+        _state.update { it.copy(pinned = next) }
+        pins.write(owner, next)
+        return true
+    }
+
+    /** The pinned chats as the list just loaded them, so the next start shows them as they are now (#33). */
+    private fun syncPins() {
+        val owner = account ?: return
+        _state.update { it.copy(pinned = ChatRules.freshPins(it.pinned, it.conversations)) }
+        pins.write(owner, _state.value.pinned)
     }
 
     fun refresh() = load(refreshing = true)
@@ -96,6 +122,7 @@ class ChatsViewModel(private val repository: StipsRepository, session: SessionSt
                         end = if (st.page == 0) list.isEmpty() else st.end,
                     )
                 }
+                syncPins()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -119,6 +146,7 @@ class ChatsViewModel(private val repository: StipsRepository, session: SessionSt
                     val added = ChatRules.newOnPage(st.conversations, list)
                     st.copy(conversations = st.conversations + added, page = next, end = added.isEmpty(), loadingMore = false)
                 }
+                syncPins()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -147,6 +175,7 @@ class ChatsViewModel(private val repository: StipsRepository, session: SessionSt
                         end = list.isEmpty(),
                     )
                 }
+                syncPins()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -497,6 +526,37 @@ object ChatRules {
     fun withFirstPage(current: List<Conversation>, page: List<Conversation>): List<Conversation> {
         val onPage: Set<Long?> = page.map { it.other.userId }.toSet()
         return (page + current.filter { it.other.userId !in onPage }).distinctBy { it.other.userId }
+    }
+
+    /** The most chats pinned on top of Chats at once (#33). Fixed, as WhatsApp's limit is. */
+    const val MAX_PINNED = 5
+
+    /**
+     * The pinned chats once [chat] is pinned (#33): on top, as the latest pin. Null when [MAX_PINNED] are pinned already,
+     * so it can't be; a chat that's pinned stays where it is.
+     */
+    fun pin(pinned: List<Conversation>, chat: Conversation): List<Conversation>? = when {
+        pinned.any { it.other.userId == chat.other.userId } -> pinned
+        pinned.size >= MAX_PINNED -> null
+        else -> listOf(chat) + pinned
+    }
+
+    fun unpin(pinned: List<Conversation>, userId: Long): List<Conversation> = pinned.filterNot { it.other.userId == userId }
+
+    /** The pinned chats as the loaded list has them now, where it has them (#33). */
+    fun freshPins(pinned: List<Conversation>, conversations: List<Conversation>): List<Conversation> {
+        val loaded = conversations.associateBy { it.other.userId }
+        return pinned.map { loaded[it.other.userId] ?: it }
+    }
+
+    /**
+     * The chats list with the pinned ones on top (#33), the latest pin first, then the others in Stips' order. A pinned
+     * chat on a page that hasn't loaded yet shows as it last looked.
+     */
+    fun withPinned(conversations: List<Conversation>, pinned: List<Conversation>): List<Conversation> {
+        if (pinned.isEmpty()) return conversations
+        val ids: Set<Long?> = pinned.map { it.other.userId }.toSet()
+        return freshPins(pinned, conversations) + conversations.filter { it.other.userId !in ids }
     }
 
     /**

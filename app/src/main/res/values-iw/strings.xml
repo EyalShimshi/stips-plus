@@ -64,7 +64,7 @@
     <string name="error_server">סטיפס לא הצליח לעשות את זה כרגע. אפשר לנסות שוב בעוד רגע.</string>
     <string name="error_server_message">סטיפס: %1$s</string>
     <string name="error_bad_response">התשובה מסטיפס לא ברורה לאפליקציה. אפשר לנסות שוב, או לדווח מההגדרות.</string>
-    <string name="error_not_found">השאלה נמחקה או שהיא לא קיימת.</string>
+    <string name="error_not_found">הדף הזה נמחק או שהוא לא קיים.</string>
     <string name="error_banned">סטיפס חסם את החשבון הזה.</string>
     <string name="error_signed_out">ההתחברות הסתיימה. צריך להתחבר שוב כדי להמשיך.</string>
 
@@ -932,4 +932,20 @@
         <item quantity="many">ההודעה נשלחה ל־%d שיחות</item>
         <item quantity="other">ההודעה נשלחה ל־%d שיחות</item>
     </plurals>
+    <!-- v0.21: what isn't there, named (#36); pinned chats (#33); the app's language (#32) -->
+    <string name="error_not_found_question">השאלה נמחקה או שהיא לא קיימת.</string>
+    <string name="error_not_found_user">המשתמש הזה לא קיים, או שהחשבון שלו נמחק.</string>
+    <string name="error_not_found_answer">התשובה נמחקה או שהיא לא קיימת.</string>
+    <string name="chat_pin">נעץ</string>
+    <string name="chat_unpin">בטל נעיצה</string>
+    <string name="chat_pinned">שיחה נעוצה</string>
+    <string name="chat_options">אפשרויות השיחה</string>
+    <string name="chat_pin_full">אפשר לנעוץ עד %1$d שיחות</string>
+    <string name="intro_language_title">בחירת שפה</string>
+    <string name="intro_language_other">Choose a language</string>
+    <string name="intro_language_body">אפשר לשנות אותה בכל רגע בהגדרות ← מראה.</string>
+    <string name="language_system">שפת הטלפון (%1$s)</string>
+    <string name="language_system_short">מערכת</string>
+    <string name="settings_language">שפה</string>
+    <string name="settings_language_summary">\"מערכת\" היא שפת הטלפון (%1$s).</string>
 </resources>

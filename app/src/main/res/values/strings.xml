@@ -58,7 +58,7 @@
     <string name="error_server">Stips couldn\'t do that right now. Try again in a moment.</string>
     <string name="error_server_message">Stips says: %1$s</string>
     <string name="error_bad_response">Stips answered in a way the app doesn\'t understand. Try again, or report it from Settings.</string>
-    <string name="error_not_found">This question was deleted or doesn\'t exist.</string>
+    <string name="error_not_found">This page was deleted or doesn\'t exist.</string>
     <string name="error_banned">Stips has blocked this account.</string>
     <string name="error_signed_out">You\'re signed out. Sign in again to continue.</string>
 
@@ -894,4 +894,20 @@
         <item quantity="one">Sent to %d chat</item>
         <item quantity="other">Sent to %d chats</item>
     </plurals>
+    <!-- v0.21: what isn't there, named (#36); pinned chats (#33); the app's language (#32) -->
+    <string name="error_not_found_question">This question was deleted or doesn\'t exist.</string>
+    <string name="error_not_found_user">This user doesn\'t exist, or their account was deleted.</string>
+    <string name="error_not_found_answer">This answer was deleted or doesn\'t exist.</string>
+    <string name="chat_pin">Pin</string>
+    <string name="chat_unpin">Unpin</string>
+    <string name="chat_pinned">Pinned</string>
+    <string name="chat_options">chat options</string>
+    <string name="chat_pin_full">You can pin up to %1$d chats</string>
+    <string name="intro_language_title">Choose a language</string>
+    <string name="intro_language_other">בחירת שפה</string>
+    <string name="intro_language_body">You can change it any time in Settings → Appearance.</string>
+    <string name="language_system">Phone\'s language (%1$s)</string>
+    <string name="language_system_short">System</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_summary">System follows the phone\'s language (%1$s).</string>
 </resources>

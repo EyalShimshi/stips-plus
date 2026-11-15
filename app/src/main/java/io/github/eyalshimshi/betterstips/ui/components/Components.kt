@@ -141,11 +141,19 @@ fun ScrollToTopOnReselect(route: String, listState: LazyListState, onRefresh: ((
     }
 }
 
+/** The green of a vote up, and of a score above zero (v0.13, #10; #35). */
+@Composable
+fun voteUpColor(): Color = if (LocalIsDark.current) Color(0xFF81C995) else Color(0xFF188038)
+
+/** The red of a vote down, and of a score below zero (#35). */
+@Composable
+fun voteDownColor(): Color = MaterialTheme.colorScheme.error
+
 /** An answer's score: green above zero, red below, as usual at zero (v0.13, #10). */
 @Composable
 fun voteScoreColor(score: Int): Color = when {
-    score > 0 -> if (LocalIsDark.current) Color(0xFF81C995) else Color(0xFF188038)
-    score < 0 -> MaterialTheme.colorScheme.error
+    score > 0 -> voteUpColor()
+    score < 0 -> voteDownColor()
     else -> LocalContentColor.current
 }
 
@@ -525,15 +533,19 @@ fun LinkifiedText(
     }
 }
 
+/**
+ * What went wrong, in words. [notFound]: what to say when Stips says the item doesn't exist (`API_ERROR_EOF`), which
+ * it says the same way for a question, a user or an answer, so each screen names its own (#36); a page by default.
+ */
 @Composable
-fun errorMessage(error: ApiException): String = when {
+fun errorMessage(error: ApiException, notFound: Int = R.string.error_not_found): String = when {
     error.isNetwork -> stringResource(R.string.error_offline)
     error.code == ApiException.RATE_LIMITED -> stringResource(R.string.error_rate_limited)
     error.code == ApiException.THROTTLED -> stringResource(R.string.error_throttled)
     error.code == ApiException.BLOCKED -> stringResource(R.string.error_blocked)
     error.code == ApiException.SERVER -> stringResource(R.string.error_server_down, error.serverMessage.orEmpty())
     error.code == ApiException.HTTP -> stringResource(R.string.error_http, error.serverMessage.orEmpty())
-    error.code == ApiException.NOT_FOUND -> stringResource(R.string.error_not_found)
+    error.code == ApiException.NOT_FOUND -> stringResource(notFound)
     error.code == ApiException.BANNED -> stringResource(R.string.error_banned)
     error.code == ApiException.NOT_SIGNED_IN -> stringResource(R.string.error_signed_out)
     error.code == ApiException.BAD_RESPONSE -> stringResource(R.string.error_bad_response)
@@ -574,10 +586,11 @@ fun MessageCard(
     }
 }
 
+/** [error] in a card with *Retry*; [notFound] as for [errorMessage] (#36). */
 @Composable
-fun ErrorCard(error: ApiException, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+fun ErrorCard(error: ApiException, onRetry: () -> Unit, modifier: Modifier = Modifier, notFound: Int = R.string.error_not_found) {
     MessageCard(
-        title = errorMessage(error),
+        title = errorMessage(error, notFound),
         body = null,
         actionLabel = stringResource(R.string.action_retry),
         onAction = onRetry,

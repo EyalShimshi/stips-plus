@@ -122,7 +122,7 @@ flowchart TD
 - Editing an answer reuses the composer with a banner "Editing your answer" and Cancel.
 - Signed out, the composer is a tonal button: *Sign in to answer*; pin and updates lead to sign-in.
 - Tinted with the channel's scheme when the question has a channel.
-- Not found (`API_ERROR_EOF`): "This question was deleted or doesn't exist." + *Go back*.
+- Not found (`API_ERROR_EOF`): "This question was deleted or doesn't exist." + *Go back*. Since v0.21 (D-154) every screen names what it couldn't find: a profile "This user doesn't exist, or their account was deleted." + *Go back*; a chat the same; an answer's edit history "This answer was deleted or doesn't exist."; anything else "This page was deleted or doesn't exist."
 - **v0.9:** pull down to reload the question and its answers (the spinner comes down below the top bar). The asker's own answers carry a small tertiary pill, "שואל השאלה" / "שואלת השאלה", after the name. Verified accounts (organizations, Stips' own) show a blue ✓ after the name, and their answers a thin blue outline. Answers follow the chosen order (as on Stips, newest, oldest, most votes); since v0.16 it's picked in the question (below). In expert mode: an id line under the hero and under each name, *Server details* in the ⋮ menus, and the load time at the end.
 - **v0.10, replies (D-68, D-69):** dragging an answer from left to right slides it after the finger, revealing a ↩ that grows in; past 64 dp a haptic tick, and letting go starts a reply (the card springs back). The composer then shows a bar (start-side primary stripe, ↩, "Replying to Dana", her first line, ✕) and the draft opens with "^^" and a line break, cursor at the end, keyboard up. ⋮ → *Reply* does the same. An answer that points up shows, between its header and its text, one to three quotes: a rounded box tinted with 8 % primary, a 3 dp primary stripe on the start side, the author in primary labelMedium and two lines of their text in bodySmall; a tap scrolls there. The text below stays as written (v0.11): every pointer in it, at the start or further on, is bold primary and tappable. *Hide the carets* (Settings, off by default) leaves out the opening ones that the quotes show.
 - **v0.10, notifications and moderators (D-70, D-71):** opened from a notification, the screen scrolls the first new answer (or the user's flowered one) to just below the folded top bar, and its card breathes: its surface goes to primary container and back twice over two seconds. A moderator's name is followed by a pill in Stips' purple (tonal, 14 % container) with a 12 dp shield: "נאמן סטיפס" / "נאמנת סטיפס", or "נאמן בכיר" / "נאמנה בכירה".
@@ -132,6 +132,8 @@ flowchart TD
 - **v0.16 (D-113):** by "N answers", an assist chip (sort icon, the current order's name, ▾) opens a menu: *Default* · *Newest first* · *Most upvotes* · *Least upvotes*, the current one checked. Another order fills the chip (secondaryContainer). Each visit starts in *Default*.
 - **Swipes (v0.16, D-110):** answers and chat messages swipe as questions in lists do: past 64 dp (chats 56), or a flick.
 - **v0.18:** the top bar's ⋮ starts with *Reply in private* (💬) when the asker isn't anonymous or you (D-137); the left swipe on someone's answer can be set to it too. Moderator pills always show (D-130). Tips (D-138): opening a question with answers, the first answer in sight slides right a little with "Swipe right to reply" over it; after posting an answer, it slides left with what that swipe does ("Swipe left: Edit answer").
+- **Votes (v0.21, D-153):** the arrows are 40 dp circles in 48 dp touch targets. The one you picked is green (up; `#188038`, dark `#81C995`) or red (down; error) on an 18 % tint of it, whatever the score's sign, and pops to 1.3× and back as you pick it (with moving elements on); the score turns bold once you voted. TalkBack reads each arrow as a toggle, checked when it's yours.
+- **Your answer's swipe (v0.21, D-152):** the left-swipe choices for your own answer are *Nothing*, *Edit answer*, *Detach from my account* and *Edit history*; *Delete* is gone (Stips doesn't delete your answers, it detaches them). The ⋮ menu offers *Delete answer* only where Stips' own permissions allow it.
 
 ### 5.3 Chats
 
@@ -157,6 +159,8 @@ The list updates by itself when the unread count changes (checked every 10 s whi
 **Every chat (build 30, D-126):** older chats load page after page as the list nears its end (a small spinner at the very bottom while there may be more; *Retry* if a page failed). Each row's last line leaves out the carets a reply opens with, and (v0.18) a Stips link on a line of its own.
 
 **Tip (v0.18, D-138):** under the shelf, a dark pill: "The first circle is your notes to self, a chat only you see", until the circle is tapped.
+
+**Pinned chats (v0.21, D-151):** a long press on a chat (its haptic tick) opens a small menu on it: *Pin* (📌 filled) or *Unpin* (📌 outlined); TalkBack offers the same as an action. Pinned chats come first, the latest pin on top, each with a 16 dp filled pin in onSurfaceVariant by its time (beside the unread badge when there is one). Up to 5: a sixth gets "You can pin up to 5 chats" at the bottom. A pinned chat whose page hasn't loaded yet shows as it last looked, without the online dot or unread count, until its page or a new message brings it. In search, pinned chats show their pin too.
 
 Signed out: an invitation card — "Sign in to see your chats" + *Sign in*.
 
@@ -283,11 +287,15 @@ Picked rows are tinted secondaryContainer. Below 5 flowers (not a moderator) the
 
 **Welcome (v0.9, D-61):** on the first launch after installing, the same form covers the app under "Stips+" (display, primary), "Welcome" and a line about the app, with *Continue as a guest* (outlined) under *Sign in*. Either one closes it for good; updates, links and shortcuts skip it.
 
+**Intro, the language first (v0.21, D-150):** before *Welcome*, **Choose a language**: "Stips+" (display, primary), "Choose a language" (headline), "בחירת שפה" under it (the other language's words, titleMedium, onSurfaceVariant), "You can change it any time in Settings → Appearance.", then three large rows (16 dp corners, a radio button, titleMedium): *Phone's language (English)*, *עברית*, *English*, the picked one on secondaryContainer, the others on surfaceContainerHigh. A tap applies it at once: the screen comes back in that language and direction, still on this step. *Next* (filled, full width); no *Skip* and no ←. In Hebrew the words swap places.
+
 **Intro (v0.14, D-98):** replaces the welcome screen. A top row: ← (from the second step), dots for the steps (the current one long), *Skip* on the choice steps. Steps: **Welcome** ("Stips+" display, "Welcome", a line, the look's picture; *Skip* · *Let's go*) → **Pick your look** (the look's picture, Theme System/Light/Dark, Dynamic color, accent swatches) → **Your Home** (the three layouts as pictures, Live new questions) → **Replies, made clear** (two answers replying, Easy reply · Show what answers reply to · Hide the carets, for answers and chats together) → **Sign in to Stips** (the sign-in form, *Continue as a guest*) → **Get notified on your phone?** (signed in: a notification's picture; *Not now* · *Turn on*) → **You're all set** (a check; *Start using Stips+*). Choices apply at once; the pages slide with the reading direction.
 
 **v0.16 (D-114):** a **Swipes** step after *Replies*: "Swipe for quick actions", the picture of a question slid each way with *Swipe right* and *Swipe left* lines (each opens the list of choices), then the picture of two answers slid left (someone's, and one under your nickname) with the two answer lines, and "Swipe an answer to the right to reply to it". In *Replies*, the carets in the words are bold in the accent color.
 
 ### 5.7 Settings
+
+**v0.21:** *Appearance* → *Interface* starts with **Language** (D-150): segmented buttons *System* · *עברית* · *English*, under "System follows the phone's language (English)."; picking one turns the app at once. *Questions and answers* → *Swipe left on your answer* loses *Delete answer* (D-152).
 
 **v0.20:** *About* → *Update to 0.20.34* opens the APK in the browser (D-145); the row has no *Install* or download progress any more.
 
@@ -401,7 +409,7 @@ Before v0.9, groups on one page (DESIGN-PHILOSOPHY §8): **Stips account** (sign
 ## 8. Accessibility
 
 - Question rows read as one sentence: "Is my pendant nice?, 3 answers, 5 minutes ago, by Mendy".
-- Every icon button has a label; vote buttons announce the score.
+- Every icon button has a label; vote buttons announce the score, and since v0.21 whether they're yours (checked toggles).
 - Text scales to 200%: titles wrap to 3 lines, rows grow.
 - Reduced motion: the in-app *Animations* switch and the system animation scale turn transitions into fades.
 

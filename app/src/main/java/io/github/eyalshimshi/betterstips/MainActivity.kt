@@ -1,5 +1,6 @@
 package io.github.eyalshimshi.betterstips
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -18,6 +19,7 @@ import io.github.eyalshimshi.betterstips.ui.AppRoot
 import io.github.eyalshimshi.betterstips.ui.components.LocalAppContainer
 import io.github.eyalshimshi.betterstips.ui.theme.StipsTheme
 import io.github.eyalshimshi.betterstips.ui.theme.isDarkTheme
+import io.github.eyalshimshi.betterstips.util.AppLanguage
 import io.github.eyalshimshi.betterstips.util.DeepLink
 import io.github.eyalshimshi.betterstips.util.Links
 import io.github.eyalshimshi.betterstips.util.ShareRules
@@ -27,6 +29,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class MainActivity : ComponentActivity() {
     /** A link to open (from another app or a phone notification), until AppRoot has navigated to it. */
     private val pendingLink = MutableStateFlow<DeepLink?>(null)
+
+    /** In the language picked in Stips+ (#32), before Android 13; from 13 Android applies it itself. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguage.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

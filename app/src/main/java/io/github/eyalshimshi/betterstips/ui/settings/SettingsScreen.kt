@@ -114,6 +114,7 @@ import io.github.eyalshimshi.betterstips.ui.notifications.PhoneNotificationsStat
 import io.github.eyalshimshi.betterstips.ui.notifications.rememberPhoneNotificationsToggle
 import io.github.eyalshimshi.betterstips.ui.profile.GroupLabel
 import io.github.eyalshimshi.betterstips.ui.profile.GroupRow
+import io.github.eyalshimshi.betterstips.util.AppLanguage
 import io.github.eyalshimshi.betterstips.util.CredRules
 import io.github.eyalshimshi.betterstips.util.SwipeRules
 import io.github.eyalshimshi.betterstips.util.NotificationCategories
@@ -582,16 +583,36 @@ private fun LookPage(settings: AppSettings) {
         trailing = { Switch(checked = settings.pureBlack, onCheckedChange = null) },
     )
     GroupLabel(stringResource(R.string.settings_interface))
+    // The app's language (#32), as in the intro's first step; picking one makes the screen again in it.
+    val context = LocalContext.current
+    var language by remember { mutableStateOf(AppLanguage.current(context)) }
+    ChoiceBox(
+        title = stringResource(R.string.settings_language),
+        summary = stringResource(R.string.settings_language_summary, AppLanguage.systemLanguageName()),
+        options = AppLanguage.Choice.entries.map { it to (it.nativeName ?: stringResource(R.string.language_system_short)) },
+        selected = language,
+        onSelect = { choice ->
+            language = choice
+            AppLanguage.activityOf(context)?.let { AppLanguage.set(it, choice) }
+        },
+        index = 0,
+        count = 2,
+    )
     GroupRow(
         title = stringResource(R.string.settings_images),
         summary = stringResource(R.string.settings_images_summary),
-        index = 0,
-        count = 1,
+        index = 1,
+        count = 2,
         onClick = { store.update { it.copy(showImages = !it.showImages) } },
         trailing = { Switch(checked = settings.showImages, onCheckedChange = null) },
     )
     MotionGroup(settings)
 }
+
+/** A language's name to pick it by (#32): Hebrew and English in their own words, the phone's with its language. */
+@Composable
+internal fun languageLabel(choice: AppLanguage.Choice): String =
+    choice.nativeName ?: stringResource(R.string.language_system, AppLanguage.systemLanguageName())
 
 /**
  * Animations (#18): three presets first; "Customized" shows every kind of animation with its own switch, starting

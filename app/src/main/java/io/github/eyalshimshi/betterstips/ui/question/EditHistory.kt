@@ -92,6 +92,7 @@ internal fun EditHistorySheet(answer: Answer, onDismiss: () -> Unit) {
                 loaded.isFailure -> ErrorCard(
                     (loaded.exceptionOrNull() ?: IllegalStateException()).asApiException(),
                     onRetry = { attempt++ },
+                    notFound = R.string.error_not_found_answer,
                 )
                 else -> {
                     val revisions = loaded.getOrDefault(emptyList())

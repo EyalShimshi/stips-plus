@@ -171,8 +171,8 @@ if ! adb install "$APK" > "$OUT/install.txt" 2>&1; then
   exit 1
 fi
 open_app fresh-install count
-# The first launch after installing asks to sign in or go on as a guest (#8).
-expect_text fresh-install "Welcome"
+# The first launch after installing opens the intro, on its first step: the language (#8, #32).
+expect_text fresh-install "Choose a language"
 adb shell am force-stop "$PKG"
 open_app second-launch count
 

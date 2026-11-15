@@ -84,9 +84,10 @@ enum class QuestionSwipe { None, Pin, Follow, PrivateReply, Share, CopyLink, Ope
 
 /**
  * What swiping an answer to the left does (#18); swiping it to the right replies (easy reply). [PrivateReply] messages
- * the answerer about the question (v0.18), a swipe only, not in the answer's ⋮ menu.
+ * the answerer about the question (v0.18), a swipe only, not in the answer's ⋮ menu. No "delete" (#34): Stips lets you
+ * detach your answer, not delete it; a saved "Delete" falls back to the default.
  */
-enum class AnswerSwipe { None, Edit, Detach, Delete, History, PrivateReply, Report, Hide, HideUser }
+enum class AnswerSwipe { None, Edit, Detach, History, PrivateReply, Report, Hide, HideUser }
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,

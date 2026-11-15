@@ -4,10 +4,13 @@ import io.github.eyalshimshi.betterstips.ui.components.FlowerIcon
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -48,6 +51,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -111,6 +115,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -132,6 +137,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -214,6 +220,8 @@ import io.github.eyalshimshi.betterstips.ui.components.rememberAnonymousModeOn
 import io.github.eyalshimshi.betterstips.ui.components.reveal
 import io.github.eyalshimshi.betterstips.ui.components.shareText
 import io.github.eyalshimshi.betterstips.ui.components.specialNameColor
+import io.github.eyalshimshi.betterstips.ui.components.voteDownColor
+import io.github.eyalshimshi.betterstips.ui.components.voteUpColor
 import io.github.eyalshimshi.betterstips.ui.theme.LocalAppSettings
 import io.github.eyalshimshi.betterstips.ui.theme.SeededTheme
 import io.github.eyalshimshi.betterstips.util.AnswerDisplay
@@ -417,8 +425,9 @@ fun QuestionScreen(
                     if (!answer.author.anonymous) {
                         add(MenuEntry(detachLabel, Icons.Outlined.PersonOff, swipe = AnswerSwipe.Detach) { pending = PendingAction.DetachAnswer(answer) })
                     }
+                    // Only when Stips allows it (moderators): it doesn't for your own answers, so it's no swipe (#34).
                     if (answer.canDelete) {
-                        add(MenuEntry(deleteLabel, Icons.Outlined.Delete, destructive = true, swipe = AnswerSwipe.Delete) { pending = PendingAction.DeleteAnswer(answer) })
+                        add(MenuEntry(deleteLabel, Icons.Outlined.Delete, destructive = true) { pending = PendingAction.DeleteAnswer(answer) })
                     }
                 } else {
                     // Reply in private (v0.18): a chat with the answerer about this question, by the swipe only.
@@ -516,7 +525,7 @@ fun QuestionScreen(
                             .statusBarsPadding()
                             .padding(top = 56.dp),
                     ) {
-                        MessageCard(stringResource(R.string.error_not_found), null, stringResource(R.string.action_go_back), onBack)
+                        MessageCard(stringResource(R.string.error_not_found_question), null, stringResource(R.string.action_go_back), onBack)
                     }
                     hidden -> Column(
                         Modifier
@@ -534,7 +543,7 @@ fun QuestionScreen(
                         Modifier
                             .statusBarsPadding()
                             .padding(top = 56.dp),
-                    ) { ErrorCard(error, onRetry = vm::load) }
+                    ) { ErrorCard(error, onRetry = vm::load, notFound = R.string.error_not_found_question) }
                     question == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                     else -> QuestionContent(
                         question = question,
@@ -947,7 +956,7 @@ private fun QuestionContent(
                             // Sorting, for this visit (v0.16): a small menu by the count.
                             if (answers.size > 1) AnswerSortButton(state.sort, onSort)
                         }
-                        KEY_ANSWERS_ERROR -> answersError?.let { ErrorCard(it, onRetry) }
+                        KEY_ANSWERS_ERROR -> answersError?.let { ErrorCard(it, onRetry, notFound = R.string.error_not_found_question) }
                         else -> Unit
                     }
                 }
@@ -1576,22 +1585,30 @@ private fun AnswerCard(
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { onVote(1) }, enabled = signedIn) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowUp,
-                            contentDescription = stringResource(R.string.vote_up),
-                            tint = if (answer.userVote == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    // Green above zero, red below (v0.13, #10).
-                    Text(answer.score.toString(), style = MaterialTheme.typography.labelLarge, color = voteScoreColor(answer.score))
-                    IconButton(onClick = { onVote(-1) }, enabled = signedIn) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowDown,
-                            contentDescription = stringResource(R.string.vote_down),
-                            tint = if (answer.userVote == -1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    // The arrow you picked: green up or red down on a tint of it, whatever the score (#35).
+                    VoteButton(
+                        Icons.Filled.KeyboardArrowUp,
+                        stringResource(R.string.vote_up),
+                        picked = answer.userVote == 1,
+                        color = voteUpColor(),
+                        enabled = signedIn,
+                        onClick = { onVote(1) },
+                    )
+                    // Green above zero, red below (v0.13, #10); bold once you voted (#35).
+                    Text(
+                        answer.score.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = voteScoreColor(answer.score),
+                        fontWeight = if (answer.userVote != 0) FontWeight.Bold else null,
+                    )
+                    VoteButton(
+                        Icons.Filled.KeyboardArrowDown,
+                        stringResource(R.string.vote_down),
+                        picked = answer.userVote == -1,
+                        color = voteDownColor(),
+                        enabled = signedIn,
+                        onClick = { onVote(-1) },
+                    )
                     Spacer(Modifier.weight(1f))
                     if (showFlowerButton) {
                         TextButton(onClick = onFlower, enabled = !flowering) {
@@ -1608,6 +1625,65 @@ private fun AnswerCard(
             }
         }
         TipPill(tip, Modifier.align(Alignment.Center))
+    }
+}
+
+/**
+ * One of an answer's vote arrows (#35). The one you picked is [color] (green up, red down) on a circle tinted with it,
+ * whatever the score, and pops a little as you pick it. A toggle, so TalkBack says whether it's picked; built as
+ * Material's icon button is (a 40 dp circle in a 48 dp touch target).
+ */
+@Composable
+private fun VoteButton(
+    icon: ImageVector,
+    description: String,
+    picked: Boolean,
+    color: Color,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val animate = LocalAppSettings.current.motion.elements
+    val container by animateColorAsState(
+        if (picked) color.copy(alpha = 0.18f) else Color.Transparent,
+        animationSpec = if (animate) tween(200) else snap(),
+        label = "voteContainer",
+    )
+    val content by animateColorAsState(
+        if (picked) color else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = if (animate) tween(200) else snap(),
+        label = "voteContent",
+    )
+    val scale = remember { Animatable(1f) }
+    // Only a change pops: not an answer that shows up already voted on.
+    var settled by remember { mutableStateOf(false) }
+    LaunchedEffect(picked) {
+        if (settled && picked && animate) {
+            scale.animateTo(1.3f, tween(90))
+            scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+        } else if (scale.value != 1f) {
+            // A pop cut short (a quick second tap, or a vote that failed and was taken back) settles back.
+            if (animate) scale.animateTo(1f, tween(120)) else scale.snapTo(1f)
+        }
+        settled = true
+    }
+    Box(
+        Modifier
+            .minimumInteractiveComponentSize()
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(container)
+            .toggleable(value = picked, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() }),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = description,
+            tint = if (enabled) content else content.copy(alpha = 0.38f),
+            modifier = Modifier.graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+            },
+        )
     }
 }
 
@@ -1933,7 +2009,7 @@ private fun Composer(
                     AnswerRules.Problem.Empty -> stringResource(R.string.answer_problem_empty)
                     AnswerRules.Problem.TooLong -> stringResource(R.string.answer_problem_long, AnswerRules.MAX_LENGTH)
                     AnswerRules.Problem.RepeatedLetters -> stringResource(R.string.answer_problem_repeated)
-                    null -> state.postError?.let { errorMessage(it) }
+                    null -> state.postError?.let { errorMessage(it, R.string.error_not_found_question) }
                 }
                 if (problemText != null) {
                     Text(

@@ -21,6 +21,7 @@
 | M3.14 v0.18 | #27: the bell in sentences, flowers in color, older notifications by themselves, tapped notifications read, team notices in full; #29: bios as on Stips; #31: moderator marks daily; #30: a calm refresh; #26: credit; #24: the app's page; #25: updates inside the app; Share → Stips+; link cards and *Reply in private* in chats; #28: tips | Friends install and update Stips+ without GitHub; links in chats read like the rest of the app |
 | M3.15 v0.19 | Share to chats (up to five, text only) in place of opening shared links; a message's menu with *Forward* and *Share*; bigger flowers on answers; the creator's badge on his profile only; *Buy me a coffee*; the app's page moves to the owner's site, www.shimshii.com | Passing something on to friends on Stips works as in WhatsApp |
 | M3.16 v0.20 | Updates through the browser, without the permission to install apps; the intro on reinstalling, with the settings the backup restored; the site's certificate | Play Protect doesn't call Stips+ harmful, and the site doesn't look unsafe |
+| M3.17 v0.21 | #32: the language first in the intro, and in Settings; #33: pinned chats; #34: no fake delete swipe; #35: the vote you gave, clear; #36: missing pages say what's missing | The app speaks the reader's language from the first screen; chats you care about stay on top |
 | M4 Public | Only with Stips' written permission | Playbook §7 checklist, README in Hebrew and English |
 
 ## 2. Spikes

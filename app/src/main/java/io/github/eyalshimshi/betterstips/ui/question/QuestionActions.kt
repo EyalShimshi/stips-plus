@@ -367,7 +367,6 @@ fun answerSwipeIcon(action: AnswerSwipe): ImageVector = when (action) {
     AnswerSwipe.None -> Icons.Outlined.DoNotTouch
     AnswerSwipe.Edit -> Icons.Filled.Edit
     AnswerSwipe.Detach -> Icons.Outlined.PersonOff
-    AnswerSwipe.Delete -> Icons.Outlined.Delete
     AnswerSwipe.History -> Icons.Outlined.History
     AnswerSwipe.PrivateReply -> Icons.AutoMirrored.Outlined.Chat
     AnswerSwipe.Report -> Icons.Outlined.Flag
@@ -380,7 +379,6 @@ fun answerSwipeLabel(action: AnswerSwipe): Int = when (action) {
     AnswerSwipe.None -> R.string.swipe_none
     AnswerSwipe.Edit -> R.string.edit_answer
     AnswerSwipe.Detach -> R.string.detach_answer
-    AnswerSwipe.Delete -> R.string.delete_answer
     AnswerSwipe.History -> R.string.edit_history
     AnswerSwipe.PrivateReply -> R.string.reply_private
     AnswerSwipe.Report -> R.string.report_answer
