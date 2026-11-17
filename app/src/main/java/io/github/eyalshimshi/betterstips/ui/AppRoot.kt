@@ -136,7 +136,9 @@ import io.github.eyalshimshi.betterstips.ui.settings.SettingsScreen
 import io.github.eyalshimshi.betterstips.ui.signin.SignInScreen
 import io.github.eyalshimshi.betterstips.ui.signin.IntroScreen
 import io.github.eyalshimshi.betterstips.ui.theme.LocalAppSettings
+import io.github.eyalshimshi.betterstips.ui.updates.AnnouncementDialog
 import io.github.eyalshimshi.betterstips.ui.user.UserProfileScreen
+import io.github.eyalshimshi.betterstips.util.AnnouncementRules
 import io.github.eyalshimshi.betterstips.util.BellRules
 import io.github.eyalshimshi.betterstips.util.CredRules
 import io.github.eyalshimshi.betterstips.util.DeepLink
@@ -153,6 +155,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Locale
 
 object Routes {
@@ -314,6 +317,19 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
     LaunchedEffect(checkUpdates, lifecycleOwner) {
         if (!checkUpdates || !UpdateRules.SELF_UPDATE) return@LaunchedEffect
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) { container.updates.checkIfDue() }
+    }
+
+    // Announcements from Stips+ (#41): read every few hours as the app comes to the screen; each new one pops up once,
+    // once the intro and the blocked-account screen are out of the way.
+    val announcements = container.announcements
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) { announcements.checkIfDue() }
+    }
+    val allAnnouncements by announcements.all.collectAsStateWithLifecycle()
+    val seenAnnouncements by announcements.seen.collectAsStateWithLifecycle()
+    val testBuilds = LocalAppSettings.current.testBuilds
+    val newAnnouncement = remember(allAnnouncements, seenAnnouncements, testBuilds) {
+        AnnouncementRules.toShow(allAnnouncements, seenAnnouncements, container.updates.versionCode, testBuilds, LocalDate.now())
     }
 
     // Unread chats and notifications: one tiny request every 10 s, only while the app is on screen and signed in,
@@ -485,8 +501,15 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
         )
     }
     imageLink.value?.let { source -> ImageLinkViewer(source, onDismiss = { imageLink.value = null }) }
-    // Once: phone notifications on, and allowed to run in the background (v0.11).
-    NotificationsPrompt(active = !welcome && !banVisible, snackbar = snackbar)
+    // Not when a link, a shortcut or a notification opened the app (#41): that's what the person came for, and the
+    // launch test's shortcut checks see their own screens. The next time the app is opened, it shows.
+    val openedByLink = rememberSaveable { pendingLink != null }
+    val announcementShown = !openedByLink && !welcome && !banVisible && teamNotice == null && newAnnouncement != null
+    if (announcementShown) {
+        newAnnouncement?.let { shown -> AnnouncementDialog(shown, onDismiss = { announcements.markSeen(shown.id) }) }
+    }
+    // Once: phone notifications on, and allowed to run in the background (v0.11). After an announcement, not with it.
+    NotificationsPrompt(active = !welcome && !banVisible && !announcementShown, snackbar = snackbar)
 }
 
 /** Whether this is the version first installed (not an update): only then does the welcome screen show. */
@@ -733,6 +756,15 @@ private fun AppNavHost(navController: NavHostController, modifier: Modifier, onN
         navController.popBackStack()
     }
 
+    // "Profile photo and bio" (#44) goes back to the profile page Settings was opened from: Settings only opens from
+    // one. Switching to the Profile tab brought back that tab's own saved stack, which is Settings itself, so the row
+    // seemed dead. Your page opened from elsewhere comes first, being nearer than the tab's.
+    fun backToMyProfile() {
+        if (navController.popBackStack(Routes.USER, inclusive = false)) return
+        if (navController.popBackStack(Routes.PROFILE, inclusive = false)) return
+        navigateToTab(navController, Routes.PROFILE)
+    }
+
     NavHost(
         navController = navController,
         startDestination = startRoute,
@@ -921,7 +953,7 @@ private fun AppNavHost(navController: NavHostController, modifier: Modifier, onN
                 page = null,
                 onBack = ::back,
                 onOpenPage = { page -> navController.navigate(Routes.settingsPage(page)) { launchSingleTop = true } },
-                onOpenMyProfile = { navigateToTab(navController, Routes.PROFILE) },
+                onOpenMyProfile = ::backToMyProfile,
                 onOpenNetLog = { navController.navigate(Routes.NETLOG) { launchSingleTop = true } },
                 onSignIn = ::signIn,
             )
@@ -931,7 +963,7 @@ private fun AppNavHost(navController: NavHostController, modifier: Modifier, onN
                 page = SettingsPage.of(entry.arguments?.getString("page")),
                 onBack = ::back,
                 onOpenPage = { page -> navController.navigate(Routes.settingsPage(page)) { launchSingleTop = true } },
-                onOpenMyProfile = { navigateToTab(navController, Routes.PROFILE) },
+                onOpenMyProfile = ::backToMyProfile,
                 onOpenNetLog = { navController.navigate(Routes.NETLOG) { launchSingleTop = true } },
                 onSignIn = ::signIn,
             )

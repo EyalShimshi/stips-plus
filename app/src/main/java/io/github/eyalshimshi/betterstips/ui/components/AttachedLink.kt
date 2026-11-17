@@ -32,14 +32,15 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.eyalshimshi.betterstips.R
 import io.github.eyalshimshi.betterstips.util.ImageLinks
 import io.github.eyalshimshi.betterstips.util.Links
 
 /**
  * A link attached to a question or an answer. A title written for it shows with the link's real site after it, so
- * it can't pass for another site (#14). A picture link also gets "Show image", which opens it in the app's viewer
- * (#15); the link itself still opens the browser.
+ * it can't pass for another site (#14). A picture link is only "Show image" (#43), which opens it in the app's viewer
+ * (#15); once its picture couldn't be shown, it's the link again, for the browser.
  */
 @Composable
 fun AttachedLink(url: String, title: String?, style: TextStyle, modifier: Modifier = Modifier) {
@@ -48,6 +49,12 @@ fun AttachedLink(url: String, title: String?, style: TextStyle, modifier: Modifi
     val image = remember(url) { ImageLinks.classify(url) }
     val host = remember(url) { Links.host(url) }
     var viewing by rememberSaveable(url) { mutableStateOf(false) }
+    val failedLinks by LocalAppContainer.current.imageLinks.failed.collectAsStateWithLifecycle()
+    if (image != null && url !in failedLinks) {
+        ShowImageButton(onClick = { viewing = true }, modifier = modifier)
+        if (viewing) ImageLinkViewer(image, onDismiss = { viewing = false })
+        return
+    }
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier
@@ -73,12 +80,7 @@ fun AttachedLink(url: String, title: String?, style: TextStyle, modifier: Modifi
                 Text(host, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
-        if (image != null) {
-            Spacer(Modifier.width(8.dp))
-            ShowImageButton(onClick = { viewing = true })
-        }
     }
-    if (viewing && image != null) ImageLinkViewer(image, onDismiss = { viewing = false })
 }
 
 /** "Show image" (#15): a small tonal pill. */

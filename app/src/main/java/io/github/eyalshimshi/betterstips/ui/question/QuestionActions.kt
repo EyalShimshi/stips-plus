@@ -115,7 +115,8 @@ class QuestionActions internal constructor(
             QuestionSwipe.Pin -> signedInOnly { togglePin(question) }
             QuestionSwipe.Follow -> signedInOnly { follow(question) }
             QuestionSwipe.PrivateReply -> onReplyInPrivate(question)
-            QuestionSwipe.Share -> shareText(context, question.title + "\n" + question.shareUrl)
+            // Only the link (#45); the title just heads the share sheet.
+            QuestionSwipe.Share -> shareText(context, question.shareUrl, title = question.title)
             QuestionSwipe.CopyLink -> copyLink(question)
             QuestionSwipe.OpenOnSite -> openInBrowser(context, question.shareUrl)
             QuestionSwipe.Export -> startExport(question)
@@ -372,6 +373,7 @@ fun answerSwipeIcon(action: AnswerSwipe): ImageVector = when (action) {
     AnswerSwipe.Report -> Icons.Outlined.Flag
     AnswerSwipe.Hide -> Icons.Outlined.VisibilityOff
     AnswerSwipe.HideUser -> Icons.Outlined.Block
+    AnswerSwipe.Copy -> Icons.Outlined.ContentCopy
 }
 
 /** The words for an answer's left-swipe action, as Settings lists them (#18). */
@@ -384,6 +386,7 @@ fun answerSwipeLabel(action: AnswerSwipe): Int = when (action) {
     AnswerSwipe.Report -> R.string.report_answer
     AnswerSwipe.Hide -> R.string.hide_answer
     AnswerSwipe.HideUser -> R.string.hide_user_content
+    AnswerSwipe.Copy -> R.string.copy_answer
 }
 
 /** The words for a question's swipe action, as Settings lists them (#18). */

@@ -1,5 +1,14 @@
 package io.github.eyalshimshi.betterstips.ui.settings
 
+import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Science
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalConfiguration
+import io.github.eyalshimshi.betterstips.ui.updates.AnnouncementDialog
+import io.github.eyalshimshi.betterstips.util.AnnouncementRules
+import java.time.LocalDate
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1132,7 +1141,7 @@ private fun AboutPage(container: AppContainer, settings: AppSettings, onOpenPage
             title = updateRowTitle(update),
             summary = updateRowSummary(update),
             index = 0,
-            count = 2,
+            count = 3,
             onClick = {
                 val release = update.available
                 when {
@@ -1152,9 +1161,79 @@ private fun AboutPage(container: AppContainer, settings: AppSettings, onOpenPage
             title = stringResource(R.string.settings_update_auto),
             summary = stringResource(R.string.settings_update_auto_summary),
             index = 1,
-            count = 2,
+            count = 3,
             onClick = { container.settings.update { it.copy(checkUpdates = !it.checkUpdates) } },
             trailing = { Switch(checked = settings.checkUpdates, onCheckedChange = null) },
+        )
+        // Test builds (#41): offered before they're released to everyone.
+        GroupRow(
+            title = stringResource(R.string.settings_test_builds),
+            summary = stringResource(R.string.settings_test_builds_summary),
+            index = 2,
+            count = 3,
+            onClick = {
+                container.settings.update { it.copy(testBuilds = !it.testBuilds) }
+                updates.testBuildsChanged()
+            },
+            icon = Icons.Outlined.Science,
+            trailing = { Switch(checked = settings.testBuilds, onCheckedChange = null) },
+        )
+    }
+
+    // Announcements from Stips+ (#41): the latest one again, any time.
+    val allAnnouncements by container.announcements.all.collectAsStateWithLifecycle()
+    val latestAnnouncement = remember(allAnnouncements, settings.testBuilds) {
+        AnnouncementRules.latest(allAnnouncements, container.updates.versionCode, settings.testBuilds, LocalDate.now())
+    }
+    var announcementOpen by rememberSaveable { mutableStateOf(false) }
+    val hebrew = LocalConfiguration.current.locales[0].language.let { it == "he" || it == "iw" }
+    GroupLabel(stringResource(R.string.settings_announcements_group))
+    GroupRow(
+        title = stringResource(R.string.settings_last_announcement),
+        summary = latestAnnouncement?.let { a -> a.title?.pick(hebrew) ?: a.text.pick(hebrew).lineSequence().firstOrNull() }
+            ?: stringResource(R.string.settings_last_announcement_none),
+        index = 0,
+        count = 1,
+        onClick = if (latestAnnouncement != null) ({ announcementOpen = true }) else null,
+        icon = Icons.Outlined.Campaign,
+    )
+    if (announcementOpen && latestAnnouncement != null) {
+        AnnouncementDialog(
+            latestAnnouncement,
+            onDismiss = {
+                announcementOpen = false
+                container.announcements.markSeen(latestAnnouncement.id)
+            },
+        )
+    }
+
+    // How often Stips+ was downloaded (#42): for its creator only, read from GitHub as this page opens.
+    val me by container.session.session.collectAsStateWithLifecycle()
+    if (UpdateRules.SELF_UPDATE && me.userId == SpecialAccounts.CREATOR_ID) {
+        var downloads by remember { mutableStateOf<UpdateRules.Downloads?>(null) }
+        var countingDone by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            downloads = container.updates.downloads()
+            countingDone = true
+        }
+        val counted = downloads
+        GroupLabel(stringResource(R.string.settings_creator_group))
+        GroupRow(
+            title = stringResource(R.string.settings_downloads),
+            summary = when {
+                counted != null -> stringResource(
+                    R.string.settings_downloads_summary,
+                    counted.total,
+                    counted.newestCount,
+                    counted.newestBuild ?: 0,
+                ) + "\n" + stringResource(R.string.settings_downloads_note)
+                countingDone -> stringResource(R.string.settings_downloads_failed)
+                else -> stringResource(R.string.settings_downloads_counting)
+            },
+            index = 0,
+            count = 1,
+            onClick = null,
+            icon = Icons.Outlined.Download,
         )
     }
 

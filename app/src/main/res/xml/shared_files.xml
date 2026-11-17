@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one folder the FileProvider shares (#43): pictures the viewer copies or shares, deleted after an hour. -->
+<paths>
+    <cache-path name="shared" path="shared/" />
+</paths>

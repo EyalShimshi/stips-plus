@@ -119,7 +119,11 @@ class RulesV21Test {
     @Test
     fun mySwipe_noDelete() {
         assertFalse("Stips lets you detach your answer, not delete it", AnswerSwipe.entries.any { it.name == "Delete" })
-        assertEquals(listOf(AnswerSwipe.None, AnswerSwipe.Edit, AnswerSwipe.Detach, AnswerSwipe.History), SwipeRules.MY_ANSWER_CHOICES)
+        // Copying its text joined in v0.23 (#38).
+        assertEquals(
+            listOf(AnswerSwipe.None, AnswerSwipe.Edit, AnswerSwipe.Copy, AnswerSwipe.Detach, AnswerSwipe.History),
+            SwipeRules.MY_ANSWER_CHOICES,
+        )
     }
 
     // --- What isn't there, named (#36) ---

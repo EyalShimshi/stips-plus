@@ -210,7 +210,7 @@ fun UserProfileScreen(
     var credibilityOpen by rememberSaveable { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ThanksMessage?>(null) }
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) vm.uploadPhoto(uri)
+        if (uri != null) vm.preparePhoto(uri)
     }
 
     val texts = mapOf(
@@ -219,6 +219,8 @@ fun UserProfileScreen(
         ProfileMessage.ThanksDeleted to stringResource(R.string.thanks_deleted),
         ProfileMessage.ThanksSent to stringResource(R.string.thanks_sent),
         ProfileMessage.Failed to stringResource(R.string.action_failed),
+        ProfileMessage.PhotoUnreadable to stringResource(R.string.photo_unreadable),
+        ProfileMessage.PhotoNotSaved to stringResource(R.string.photo_not_saved),
     )
     LaunchedEffect(state.message) {
         val message = state.message ?: return@LaunchedEffect
@@ -413,6 +415,8 @@ fun UserProfileScreen(
             onDismiss = { photoOpen = false },
         )
     }
+    // A new profile photo: which part shows, before it's sent (#46).
+    state.cropping?.let { bitmap -> PhotoCropDialog(bitmap, onCancel = vm::cancelCrop, onConfirm = vm::uploadPhoto) }
     if (editingBio) {
         BioDialog(
             initial = state.page?.bio.orEmpty(),

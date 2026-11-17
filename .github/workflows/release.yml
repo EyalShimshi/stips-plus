@@ -1,0 +1,85 @@
+name: Release
+
+# Releases a test build to everyone (#41): the APK of `dev-N`, the very file that was tested, published again as
+# `build-N`, which every Stips+ (0.18 on) and the website offer. Run it by hand: Actions → Release → Run workflow,
+# with the build's number (empty: the newest test build). Nothing is built here. MAINTAINING.md → "Test builds and
+# releases".
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: "The test build to release (its number, e.g. 38). Empty: the newest test build."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release a test build to everyone
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Find the test build
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD: ${{ inputs.build }}
+        run: |
+          set -euo pipefail
+          BUILD="$(printf '%s' "${BUILD:-}" | tr -d '[:space:]')"
+          releases="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100")"
+          if [ -z "$BUILD" ]; then
+            BUILD="$(jq -r '[.[] | .tag_name | select(test("^dev-[0-9]+$")) | ltrimstr("dev-") | tonumber] | max // empty' <<< "$releases")"
+          fi
+          if ! [[ "$BUILD" =~ ^[0-9]+$ ]]; then
+            echo "::error::No test build to release (got \"$BUILD\")."
+            exit 1
+          fi
+          if ! jq -e --arg t "dev-$BUILD" 'any(.[]; .tag_name == $t)' <<< "$releases" > /dev/null; then
+            echo "::error::There's no test build $BUILD (dev-$BUILD) among the newest 100 releases."
+            exit 1
+          fi
+          if jq -e --arg t "build-$BUILD" 'any(.[]; .tag_name == $t)' <<< "$releases" > /dev/null; then
+            echo "::error::Build $BUILD is already released to everyone (build-$BUILD)."
+            exit 1
+          fi
+          # Apps update only to a higher build number, so an older test build can't follow a newer release.
+          newest="$(jq -r '[.[] | .tag_name | select(test("^build-[0-9]+$")) | ltrimstr("build-") | tonumber] | max // 0' <<< "$releases")"
+          if [ "$newest" -gt "$BUILD" ]; then
+            echo "::error::Build $newest is already released, and it's newer than $BUILD: pick a newer test build."
+            exit 1
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
+      - name: Release it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD: ${{ steps.find.outputs.build }}
+        run: |
+          set -euo pipefail
+          gh release download "dev-$BUILD" -R "$GITHUB_REPOSITORY" -p "stipsplus-$BUILD.apk"
+          test -s "stipsplus-$BUILD.apk"
+          name="$(gh release view "dev-$BUILD" -R "$GITHUB_REPOSITORY" --json name --jq .name | sed 's/ *(test)$//')"
+          commit="$(gh api "repos/$GITHUB_REPOSITORY/commits/dev-$BUILD" --jq .sha)"
+          {
+            echo "> ✅ **Released to everyone** on $(date -u +%Y-%m-%d), from test build \`dev-$BUILD\`: the same file."
+            echo
+            # The test build's notes, without its "Test build" line.
+            gh release view "dev-$BUILD" -R "$GITHUB_REPOSITORY" --json body --jq .body | sed '1{/Test build/d}'
+          } > release-notes.md
+          gh release create "build-$BUILD" "stipsplus-$BUILD.apk" -R "$GITHUB_REPOSITORY" \
+            --target "$commit" --title "$name" --notes-file release-notes.md --latest
+          {
+            echo "## Build $BUILD is released to everyone"
+            echo
+            echo "- https://github.com/$GITHUB_REPOSITORY/releases/tag/build-$BUILD"
+            echo "- Every Stips+ that checks for updates offers it within a day, and the website's download button points to it."
+          } >> "$GITHUB_STEP_SUMMARY"

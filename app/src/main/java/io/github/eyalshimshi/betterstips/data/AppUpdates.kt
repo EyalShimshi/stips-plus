@@ -25,7 +25,13 @@ import java.io.File
  * first installed. Stips+ itself doesn't download or install apps, and doesn't ask for the permission to: an app that
  * does is what Play Protect takes for malware that drops other apps (D-145). Nothing here talks to Stips.
  */
-class AppUpdates(private val context: Context, private val client: OkHttpClient, private val scope: CoroutineScope) {
+class AppUpdates(
+    private val context: Context,
+    private val client: OkHttpClient,
+    private val scope: CoroutineScope,
+    /** Settings → About → "Test builds" (#41): test builds are offered too. */
+    private val testBuilds: () -> Boolean = { false },
+) {
     data class State(
         /** A newer release, when one is known. */
         val available: UpdateRules.Release? = null,
@@ -64,13 +70,16 @@ class AppUpdates(private val context: Context, private val client: OkHttpClient,
 
     private fun restore(): State {
         val build = prefs.getInt(KEY_BUILD, 0)
-        val release = if (build > versionCode) {
+        val test = prefs.getBoolean(KEY_TEST, false)
+        // A test build found earlier isn't offered once "Test builds" is off (#41).
+        val release = if (build > versionCode && (!test || testBuilds())) {
             UpdateRules.Release(
                 build = build,
                 versionName = prefs.getString(KEY_NAME, null) ?: "build $build",
                 apkUrl = prefs.getString(KEY_URL, null).orEmpty(),
                 apkBytes = prefs.getLong(KEY_BYTES, 0L),
                 pageUrl = prefs.getString(KEY_PAGE, null).orEmpty(),
+                test = test,
             ).takeIf { UpdateRules.isOurDownload(it.apkUrl) && it.apkBytes in 1..UpdateRules.MAX_APK_BYTES }
         } else {
             null
@@ -82,13 +91,14 @@ class AppUpdates(private val context: Context, private val client: OkHttpClient,
         // The SHA-256 0.18 and 0.19 kept to check their own downloads goes too.
         val edit = prefs.edit().putLong(KEY_CHECKED, checkedAt).remove(KEY_OLD_SHA256)
         if (release == null) {
-            listOf(KEY_BUILD, KEY_NAME, KEY_URL, KEY_BYTES, KEY_PAGE).forEach { edit.remove(it) }
+            listOf(KEY_BUILD, KEY_NAME, KEY_URL, KEY_BYTES, KEY_PAGE, KEY_TEST).forEach { edit.remove(it) }
         } else {
             edit.putInt(KEY_BUILD, release.build)
                 .putString(KEY_NAME, release.versionName)
                 .putString(KEY_URL, release.apkUrl)
                 .putLong(KEY_BYTES, release.apkBytes)
                 .putString(KEY_PAGE, release.pageUrl)
+                .putBoolean(KEY_TEST, release.test)
         }
         edit.apply()
     }
@@ -104,6 +114,36 @@ class AppUpdates(private val context: Context, private val client: OkHttpClient,
     /** Asks GitHub now (Settings → About), in the app's own scope: leaving the page doesn't stop it. */
     fun checkNow() {
         if (UpdateRules.SELF_UPDATE) scope.launch { check(onlyIfDue = false) }
+    }
+
+    /**
+     * "Test builds" was switched (#41): a test build already found goes when it's off, and GitHub is asked again, so
+     * the newest of what's now offered shows.
+     */
+    fun testBuildsChanged() {
+        if (!testBuilds() && _state.value.available?.test == true) {
+            persist(null, _state.value.checkedAt)
+            _state.update { it.copy(available = null) }
+        }
+        checkNow()
+    }
+
+    /** How often Stips+ was downloaded (#42), for its creator: one call to GitHub; null when it didn't answer. */
+    suspend fun downloads(): UpdateRules.Downloads? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(UpdateRules.ALL_RELEASES_URL)
+                .header("Accept", "application/vnd.github+json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) UpdateRules.downloads(response.body?.string()) else null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** When the last check got no answer, in this run of the app: automatic checks wait an hour after it. */
@@ -136,7 +176,7 @@ class AppUpdates(private val context: Context, private val client: OkHttpClient,
                 return@withLock false
             }
             val now = System.currentTimeMillis()
-            val available = UpdateRules.newest(json)?.takeIf { UpdateRules.isNewer(it, versionCode) }
+            val available = UpdateRules.newest(json, includeTests = testBuilds())?.takeIf { UpdateRules.isNewer(it, versionCode) }
             persist(available, now)
             _state.update { it.copy(available = available, checkedAt = now, checkFailed = false) }
             true
@@ -160,6 +200,7 @@ class AppUpdates(private val context: Context, private val client: OkHttpClient,
         const val KEY_URL = "apkUrl"
         const val KEY_BYTES = "apkBytes"
         const val KEY_PAGE = "pageUrl"
+        const val KEY_TEST = "test"
         const val KEY_LATER = "laterBuild"
 
         /** Kept by 0.18 and 0.19, which checked their own downloads; removed on the next check. */

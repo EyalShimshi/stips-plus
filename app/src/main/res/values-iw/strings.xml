@@ -592,11 +592,11 @@
     <string name="settings_diagnostics_summary">יומן רשת וזמני טעינה</string>
     <string name="settings_home_layout">מבנה הבית</string>
     <string name="layout_hot_new">חמות, ואז חדשות</string>
-    <string name="layout_hot_new_summary">השאלות החמות בכרטיסים גדולים, ואחריהן כל החדשות. ברירת המחדל.</string>
-    <string name="layout_website">כמו באתר</string>
-    <string name="layout_website_summary">השאלות החמות, ואחריהן שאלות היום לפי נושא. בלי רשימת שאלות חדשות.</string>
+    <string name="layout_hot_new_summary">השאלות החמות בכרטיסים גדולים, ואחריהן כל החדשות; נושאי היום במרחק נגיעה. ברירת המחדל.</string>
+    <string name="layout_website">חמות, ואז נושאים (כמו באתר)</string>
+    <string name="layout_website_summary">השאלות החמות, ואחריהן שאלות היום לפי נושא; השאלות החדשות במרחק נגיעה.</string>
     <string name="layout_new_only">רק חדשות</string>
-    <string name="layout_new_only_summary">רק השאלות החדשות, ברגע שהן מגיעות.</string>
+    <string name="layout_new_only_summary">רק השאלות החדשות, ברגע שהן מגיעות; נושאי היום במרחק נגיעה.</string>
     <string name="settings_home">בית</string>
     <string name="settings_hot_count">שאלות חמות בבית</string>
     <string name="settings_hot_hidden">לא מוצגות במבנה \"רק חדשות\".</string>
@@ -952,4 +952,46 @@
     <string name="channel_unanswered">ללא תשובות</string>
     <string name="unanswered_questions">שאלות ללא תשובות</string>
     <string name="empty_unanswered">אין כרגע שאלות ללא תשובות</string>
+    <!-- v0.23: copying an answer (#38); "you" and detaching anonymous items (#39) -->
+    <string name="copy_answer">העתקת הטקסט</string>
+    <string name="answer_copied">התשובה הועתקה</string>
+    <string name="you_label">אתה</string>
+    <string name="you_label_female">את</string>
+    <string name="reply_you_as">%1$s · %2$s</string>
+    <string name="detach_body_anonymous">היא כבר מוצגת כאנונימית, אבל סטיפס עדיין מקשר אותה אליך, ולכן אפשר לערוך אותה. אחרי הניתוק היא כבר לא שלך: אי אפשר יהיה לערוך אותה, ודיווחים עליה לא יגיעו אליך. אי אפשר לבטל את זה.</string>
+    <string name="detach_question_body_anonymous">היא כבר מוצגת כאנונימית, אבל סטיפס עדיין מקשר אותה אליך. אחרי הניתוק היא לא תופיע בשאלות ששאלת, אי אפשר יהיה לערוך אותה, ודיווחים עליה לא יגיעו אליך. אי אפשר לבטל את זה.</string>
+    <string name="answer_unlinked">התשובה כבר לא מקושרת למשתמש שלך.</string>
+    <string name="question_unlinked">השאלה כבר לא מקושרת למשתמש שלך.</string>
+    <!-- v0.23: Home's switch between new questions and today's topics (#44) -->
+    <string name="home_view_new">חדשות</string>
+    <string name="home_view_topics">נושאים</string>
+    <!-- v0.23: the profile photo, cropped in a circle (#46) -->
+    <string name="photo_crop_title">בחירת מה שיופיע בתמונת הפרופיל</string>
+    <string name="photo_crop_hint">גוררים וצובטים כדי לבחור מה יופיע בעיגול</string>
+    <string name="photo_crop_use">שמירה</string>
+    <string name="photo_unreadable">לא הצלחנו לפתוח את התמונה הזאת. אפשר לנסות תמונה אחרת.</string>
+    <string name="photo_not_saved">סטיפס לא שמר את התמונה. כדאי לנסות שוב בעוד רגע.</string>
+    <!-- v0.23: the picture viewer's menu (#43) -->
+    <string name="image_actions">אפשרויות לתמונה</string>
+    <string name="image_copy">העתקת התמונה</string>
+    <string name="image_share">שיתוף התמונה</string>
+    <string name="image_share_link">שיתוף הקישור לתמונה</string>
+    <string name="image_copied">התמונה הועתקה</string>
+    <string name="image_share_failed">לא הצלחנו לטעון את התמונה</string>
+    <!-- v0.23: test builds and announcements (#41); download counts (#42) -->
+    <string name="settings_test_builds">גרסאות ניסיון</string>
+    <string name="settings_test_builds_summary">להציע גם גרסאות שעדיין בבדיקה, לפני שכולם מקבלים אותן. ייתכנו בהן באגים.</string>
+    <string name="settings_announcements_group">הודעות</string>
+    <string name="settings_last_announcement">ההודעה האחרונה</string>
+    <string name="settings_last_announcement_none">עדיין אין הודעות</string>
+    <string name="announcement_title">הודעה מ-Stips+</string>
+    <string name="announcement_ok">הבנתי</string>
+    <string name="announcement_open">פתיחה</string>
+    <string name="settings_creator_group">ליוצר</string>
+    <string name="settings_downloads">הורדות</string>
+    <string name="settings_downloads_summary">%1$d בסך הכול · %2$d של הגרסה האחרונה (בילד %3$d)</string>
+    <string name="settings_downloads_note">GitHub סופר כל הורדה של קובץ ה-APK: גם עדכונים, וגם כמה של הבדיקות של האפליקציה עצמה.</string>
+    <string name="settings_downloads_counting">סופר…</string>
+    <string name="settings_downloads_failed">GitHub לא ענה. אפשר לפתוח את העמוד שוב אחר כך.</string>
+    <string name="update_test_name">%1$s (גרסת ניסיון)</string>
 </resources>

@@ -52,7 +52,7 @@ fun UpdateCard(state: AppUpdates.State, onLater: () -> Unit, modifier: Modifier 
                 Icon(Icons.Outlined.SystemUpdate, contentDescription = null)
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    stringResource(R.string.update_title, release.versionName),
+                    stringResource(R.string.update_title, shownVersion(release)),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -79,8 +79,13 @@ fun UpdateCard(state: AppUpdates.State, onLater: () -> Unit, modifier: Modifier 
 @Composable
 fun updateRowTitle(state: AppUpdates.State): String {
     val release = state.available
-    return if (release == null) stringResource(R.string.settings_update_check) else stringResource(R.string.settings_update_to, release.versionName)
+    return if (release == null) stringResource(R.string.settings_update_check) else stringResource(R.string.settings_update_to, shownVersion(release))
 }
+
+/** A version as the app names it: a test build (#41) says so. */
+@Composable
+private fun shownVersion(release: UpdateRules.Release): String =
+    if (release.test) stringResource(R.string.update_test_name, release.versionName) else release.versionName
 
 /** Settings → About's update row: what it says under its title. */
 @Composable

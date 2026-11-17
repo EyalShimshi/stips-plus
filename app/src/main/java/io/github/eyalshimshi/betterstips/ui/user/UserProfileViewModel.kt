@@ -1,6 +1,7 @@
 package io.github.eyalshimshi.betterstips.ui.user
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +15,7 @@ import io.github.eyalshimshi.betterstips.data.model.ThanksMessage
 import io.github.eyalshimshi.betterstips.data.model.UserProfile
 import io.github.eyalshimshi.betterstips.ui.components.asApiException
 import io.github.eyalshimshi.betterstips.util.ImagePrep
+import io.github.eyalshimshi.betterstips.util.PhotoRules
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -27,7 +29,15 @@ import kotlinx.coroutines.withContext
 /** The thanks wall comes first and opens by default (#4). */
 enum class ProfileSection { Thanks, Activity }
 
-enum class ProfileMessage { BioSaved, PhotoUpdated, ThanksDeleted, ThanksSent, Failed }
+enum class ProfileMessage {
+    BioSaved, PhotoUpdated, ThanksDeleted, ThanksSent, Failed,
+
+    /** The picked photo couldn't be read (#46). */
+    PhotoUnreadable,
+
+    /** Stips said "success" but kept the old photo (#46): its upload says so even when it saved nothing. */
+    PhotoNotSaved,
+}
 
 /** A list read page by page (thanks wall, flowered answers). */
 data class Paged<T>(
@@ -54,6 +64,8 @@ data class ProfileUiState(
     val busy: Boolean = false,
     val sendingThanks: Boolean = false,
     val message: ProfileMessage? = null,
+    /** A new profile photo, read and waiting in the crop screen (#46). */
+    val cropping: Bitmap? = null,
 )
 
 /** One profile page, the same for the signed-in user and for everyone else (owner-only actions aside). */
@@ -205,14 +217,41 @@ class UserProfileViewModel(
         }
     }
 
-    fun uploadPhoto(uri: Uri) {
+    /** Reads the picked photo for the crop screen (#46). */
+    fun preparePhoto(uri: Uri) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
             try {
-                val (jpeg, size) = withContext(Dispatchers.IO) { ImagePrep.squareJpeg(appContext, uri) }
-                repository.uploadProfilePhoto(jpeg, size)
+                val bitmap = withContext(Dispatchers.IO) { ImagePrep.decodeUpright(appContext, uri) }
+                _state.update { it.copy(busy = false, cropping = bitmap) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(busy = false, message = ProfileMessage.PhotoUnreadable) }
+            }
+        }
+    }
+
+    fun cancelCrop() {
+        _state.update { it.copy(cropping = null) }
+    }
+
+    /** Sends the square picked in the crop screen as the profile photo, and checks that Stips kept it (#46). */
+    fun uploadPhoto(square: PhotoRules.Square) {
+        val bitmap = _state.value.cropping ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, cropping = null) }
+            try {
+                val (jpeg, side) = withContext(Dispatchers.Default) { ImagePrep.squareJpeg(bitmap, square) }
+                val saved = repository.uploadProfilePhoto(jpeg, side)
                 val profile = attempt { repository.userProfile(userId) }.getOrNull()
-                _state.update { s -> s.copy(busy = false, profile = profile ?: s.profile, message = ProfileMessage.PhotoUpdated) }
+                _state.update { s ->
+                    s.copy(
+                        busy = false,
+                        profile = profile ?: s.profile,
+                        message = if (saved) ProfileMessage.PhotoUpdated else ProfileMessage.PhotoNotSaved,
+                    )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

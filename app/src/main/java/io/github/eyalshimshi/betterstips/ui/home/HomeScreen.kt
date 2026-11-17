@@ -45,6 +45,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -209,13 +212,16 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Home's layout (#8). Picking a channel in the website-like layout shows that channel's hot and new questions.
-    // The Unanswered category (#37) is a list of its own in every layout, without the hot questions: they have answers.
+    // Home's layout (#8) picks what shows under the hot questions when Home opens; a switch there shows the other (#44):
+    // the new questions or today's topics. A channel, or the Unanswered category (#37), is a list of new questions of
+    // its own, without the switch; Unanswered also without the hot questions: they have answers.
     val layout = settings.homeLayout
-    val showsSections = layout == HomeLayout.LikeWebsite && query.channelName == null && !query.unanswered
+    val canSwitch = query.channelName == null && !query.unanswered
+    var topicsPicked by rememberSaveable(layout) { mutableStateOf(layout == HomeLayout.LikeWebsite) }
+    val showsSections = canSwitch && topicsPicked
     val showsHot = layout != HomeLayout.NewOnly && !query.unanswered
     val showsNew = !showsSections
-    fun loadsNew(next: FeedQuery) = !(layout == HomeLayout.LikeWebsite && next.channelName == null && !next.unanswered)
+    fun loadsNew(next: FeedQuery) = !(topicsPicked && next.channelName == null && !next.unanswered)
 
     // Tapping Home again scrolls back to the top (v0.12) and reloads it, like entering it again (v0.13, #10).
     ScrollToTopOnReselect(Routes.HOME, listState) {
@@ -376,20 +382,22 @@ fun HomeScreen(
                     )
                 }
             }
-            if (showsNew) {
-                item(key = "new-header") {
-                    NewHeader(
-                        title = stringResource(if (query.unanswered) R.string.unanswered_questions else R.string.new_questions),
-                        live = settings.autoRefreshNew,
-                        seconds = settings.liveIntervalSeconds,
-                        tip = liveTip,
-                        onToggleLive = { container.settings.update { s -> s.copy(autoRefreshNew = !s.autoRefreshNew) } },
-                        onLiveOptions = {
-                            tutorials.done(Tutorials.Tip.LiveOptions)
-                            liveSheet = true
-                        },
-                    )
-                }
+            // The New list's heading, or, on all of Stips, the switch between new questions and today's topics (#44).
+            item(key = "new-header") {
+                NewHeader(
+                    title = stringResource(if (query.unanswered) R.string.unanswered_questions else R.string.new_questions),
+                    live = settings.autoRefreshNew,
+                    seconds = settings.liveIntervalSeconds,
+                    tip = liveTip,
+                    onToggleLive = { container.settings.update { s -> s.copy(autoRefreshNew = !s.autoRefreshNew) } },
+                    onLiveOptions = {
+                        tutorials.done(Tutorials.Tip.LiveOptions)
+                        liveSheet = true
+                    },
+                    topics = if (canSwitch) topicsPicked else null,
+                    // Both lists keep the same scroll state, so the switch stays where it was tapped.
+                    onTopics = { picked -> topicsPicked = picked },
+                )
             }
         }
         // Home's tip slides one of the rows (#28).
@@ -610,8 +618,21 @@ private fun HotCard(question: Question, rank: Int, seed: Int?, onClick: () -> Un
  * "New questions" (or "Unanswered questions", #37) and the Live chip: tap turns Live on or off, long-press sets how
  * often it checks; [tip] says so (#28).
  */
+/**
+ * The New list's heading and Live. On all of Stips [topics] isn't null and the heading is a switch instead (#44):
+ * new questions (with Live) or today's topics, whatever Home's layout opened on.
+ */
 @Composable
-private fun NewHeader(title: String, live: Boolean, seconds: Int, tip: TipState, onToggleLive: () -> Unit, onLiveOptions: () -> Unit) {
+private fun NewHeader(
+    title: String,
+    live: Boolean,
+    seconds: Int,
+    tip: TipState,
+    onToggleLive: () -> Unit,
+    onLiveOptions: () -> Unit,
+    topics: Boolean? = null,
+    onTopics: (Boolean) -> Unit = {},
+) {
     Column {
         Row(
             Modifier
@@ -619,8 +640,24 @@ private fun NewHeader(title: String, live: Boolean, seconds: Int, tip: TipState,
                 .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SectionTitle(title, Modifier.weight(1f))
-            LiveChip(live = live, seconds = seconds, onToggle = onToggleLive, onOptions = onLiveOptions)
+            if (topics == null) {
+                SectionTitle(title, Modifier.weight(1f))
+            } else {
+                SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
+                    listOf(false, true).forEachIndexed { index, isTopics ->
+                        SegmentedButton(
+                            selected = topics == isTopics,
+                            onClick = { onTopics(isTopics) },
+                            shape = SegmentedButtonDefaults.itemShape(index, 2),
+                        ) {
+                            Text(stringResource(if (isTopics) R.string.home_view_topics else R.string.home_view_new), maxLines = 1)
+                        }
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+            }
+            // Live adds new questions as they come, so it's there with them only.
+            if (topics != true) LiveChip(live = live, seconds = seconds, onToggle = onToggleLive, onOptions = onLiveOptions)
         }
         TipPill(tip, Modifier.align(Alignment.End).padding(end = 8.dp), expand = true)
     }

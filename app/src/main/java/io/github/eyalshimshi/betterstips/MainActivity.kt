@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.text.TextUtils
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -13,6 +15,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.eyalshimshi.betterstips.notify.Notifier
 import io.github.eyalshimshi.betterstips.ui.AppRoot
@@ -56,7 +62,13 @@ class MainActivity : ComponentActivity() {
                 )
                 onDispose {}
             }
-            CompositionLocalProvider(LocalAppContainer provides container) {
+            // The direction of the language the screen shows, not the one the configuration reports: after picking
+            // Hebrew and then the phone's (Hebrew) language again, Android left the app left-to-right until a restart (#47).
+            val locale = LocalConfiguration.current.locales[0]
+            val direction = remember(locale) {
+                if (TextUtils.getLayoutDirectionFromLocale(locale) == View.LAYOUT_DIRECTION_RTL) LayoutDirection.Rtl else LayoutDirection.Ltr
+            }
+            CompositionLocalProvider(LocalAppContainer provides container, LocalLayoutDirection provides direction) {
                 StipsTheme(settings) {
                     Surface(color = MaterialTheme.colorScheme.background) {
                         AppRoot(pendingLink = link, onLinkHandled = { pendingLink.value = null })

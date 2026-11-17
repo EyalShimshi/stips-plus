@@ -214,6 +214,7 @@ import io.github.eyalshimshi.betterstips.ui.components.answersText
 import io.github.eyalshimshi.betterstips.ui.components.appViewModel
 import io.github.eyalshimshi.betterstips.ui.components.authorName
 import io.github.eyalshimshi.betterstips.ui.components.channelLabel
+import io.github.eyalshimshi.betterstips.ui.components.copyPlainText
 import io.github.eyalshimshi.betterstips.ui.components.errorMessage
 import io.github.eyalshimshi.betterstips.ui.components.openInBrowser
 import io.github.eyalshimshi.betterstips.ui.components.rememberAnonymousModeOn
@@ -323,6 +324,9 @@ fun QuestionScreen(
             QuestionMessage.QuestionDetached to stringResource(R.string.question_detached),
             QuestionMessage.FlowerSent to stringResource(R.string.flower_sent),
             QuestionMessage.ReplyFixed to stringResource(R.string.reply_fixed),
+            QuestionMessage.AnswerUnlinked to stringResource(R.string.answer_unlinked),
+            QuestionMessage.QuestionUnlinked to stringResource(R.string.question_unlinked),
+            QuestionMessage.AnswerCopied to stringResource(R.string.answer_copied),
         )
         val undoLabel = stringResource(R.string.swipe_undo)
         // A tip (#28) shows on the answer just posted: what swiping your own answer to the left does.
@@ -414,17 +418,24 @@ fun QuestionScreen(
         val detailsLabel = stringResource(R.string.expert_details)
         val historyLabel = stringResource(R.string.edit_history)
         val privateReplyLabel = stringResource(R.string.reply_private)
+        val copyAnswerLabel = stringResource(R.string.copy_answer)
         val replyInPrivate = LocalReplyInPrivate.current
         val answerMenu: (Answer) -> List<MenuEntry> = { answer ->
             buildList {
                 if (canReply) add(MenuEntry(replyLabel, Icons.AutoMirrored.Filled.Reply) { vm.replyTo(answer) })
+                // Its text as it shows, without the reply's carets when they're hidden (#38); anyone's answer.
+                add(
+                    MenuEntry(copyAnswerLabel, Icons.Outlined.ContentCopy, swipe = AnswerSwipe.Copy) {
+                        val shown = if (settings.hideReplyCarets) ReplyRefs.withoutReply(answer.text) else answer.text
+                        if (!copyPlainText(context, copyAnswerLabel, shown.trim())) vm.copied()
+                    },
+                )
                 // Edited answers keep their earlier versions on Stips (v0.13, #10).
                 if (answer.edited) add(MenuEntry(historyLabel, Icons.Outlined.History, swipe = AnswerSwipe.History) { historyFor = answer })
                 if (answer.isOwner) {
                     if (answer.canEdit) add(MenuEntry(editLabel, Icons.Filled.Edit, swipe = AnswerSwipe.Edit) { vm.startEdit(answer) })
-                    if (!answer.author.anonymous) {
-                        add(MenuEntry(detachLabel, Icons.Outlined.PersonOff, swipe = AnswerSwipe.Detach) { pending = PendingAction.DetachAnswer(answer) })
-                    }
+                    // Also when it's anonymous: Stips keeps it tied to you (you can edit it) until it's detached, as on the site (#39).
+                    add(MenuEntry(detachLabel, Icons.Outlined.PersonOff, swipe = AnswerSwipe.Detach) { pending = PendingAction.DetachAnswer(answer) })
                     // Only when Stips allows it (moderators): it doesn't for your own answers, so it's no swipe (#34).
                     if (answer.canDelete) {
                         add(MenuEntry(deleteLabel, Icons.Outlined.Delete, destructive = true) { pending = PendingAction.DeleteAnswer(answer) })
@@ -479,7 +490,7 @@ fun QuestionScreen(
             // After the list has gone to the new answer.
             delay(TIP_DELAY_MS + 600)
             val mine = currentAnswers.filter { it.isOwner }.maxByOrNull { it.id } ?: return@LaunchedEffect
-            // Only when this answer can do it: an anonymous answer can't be detached, say.
+            // Only when this answer can do it: an answer Stips won't let you edit any more, say.
             if (answerMenu(mine).none { it.swipe == myAnswerAction }) return@LaunchedEffect
             if (listState.layoutInfo.visibleItemsInfo.none { it.key == mine.id }) return@LaunchedEffect
             if (!tutorials.claim(Tutorials.Tip.MyAnswerSwipe)) return@LaunchedEffect
@@ -579,6 +590,8 @@ fun QuestionScreen(
                         onHistory = { historyFor = it },
                         onSort = vm::setSort,
                         answerHint = answerHint,
+                        // "You" on your own answers, also anonymous ones, until they're detached (#39).
+                        youLabel = stringResource(if (session.profile?.female == true) R.string.you_label_female else R.string.you_label),
                     )
                 }
                 QuestionTopBar(
@@ -614,7 +627,7 @@ fun QuestionScreen(
                                 )
                             }
                         }
-                        BarIconButton(collapse = collapse, onClick = { shareText(context, question.title + "\n" + question.shareUrl) }) {
+                        BarIconButton(collapse = collapse, onClick = { shareText(context, question.shareUrl, title = question.title) }) {
                             Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.action_share))
                         }
                         val showImages = LocalAppSettings.current.showImages
@@ -633,9 +646,8 @@ fun QuestionScreen(
                             }
                             if (question.isOwner) {
                                 if (question.canEdit) add(MenuEntry(stringResource(R.string.edit_question), Icons.Filled.Edit) { pending = PendingAction.EditQuestion })
-                                if (!question.author.anonymous) {
-                                    add(MenuEntry(stringResource(R.string.detach_question), Icons.Outlined.PersonOff) { pending = PendingAction.DetachQuestion })
-                                }
+                                // Also when it was asked anonymously: Stips keeps it tied to you until it's detached (#39).
+                                add(MenuEntry(stringResource(R.string.detach_question), Icons.Outlined.PersonOff) { pending = PendingAction.DetachQuestion })
                                 if (question.canDelete) {
                                     add(MenuEntry(stringResource(R.string.delete_question), Icons.Outlined.Delete, destructive = true) { pending = PendingAction.DeleteQuestion })
                                 }
@@ -711,7 +723,8 @@ fun QuestionScreen(
             )
             is PendingAction.DetachAnswer -> ConfirmDialog(
                 title = stringResource(R.string.detach_title),
-                body = stringResource(R.string.detach_body),
+                // An anonymous answer already shows as anonymous: detaching it ends what still ties it to you (#39).
+                body = stringResource(if (action.answer.author.anonymous) R.string.detach_body_anonymous else R.string.detach_body),
                 confirm = stringResource(R.string.detach_confirm),
                 onConfirm = {
                     pending = null
@@ -731,7 +744,9 @@ fun QuestionScreen(
             )
             PendingAction.DetachQuestion -> ConfirmDialog(
                 title = stringResource(R.string.detach_question_title),
-                body = stringResource(R.string.detach_question_body),
+                body = stringResource(
+                    if (question?.author?.anonymous == true) R.string.detach_question_body_anonymous else R.string.detach_question_body,
+                ),
                 confirm = stringResource(R.string.detach_confirm),
                 onConfirm = {
                     pending = null
@@ -831,6 +846,7 @@ private fun QuestionContent(
     onHistory: (Answer) -> Unit,
     onSort: (AnswerSort) -> Unit,
     answerHint: Pair<Long, SwipeHint>? = null,
+    youLabel: String = "",
 ) {
     val scope = rememberCoroutineScope()
     val gapPx = with(LocalDensity.current) { 8.dp.toPx() }
@@ -1013,6 +1029,7 @@ private fun QuestionContent(
                             }
                         },
                         hint = answerHint?.takeIf { it.first == answer.id }?.second,
+                        youLabel = youLabel,
                     )
                 }
             }
@@ -1418,6 +1435,7 @@ private fun AnswerCard(
     special: SpecialAccounts.Entry? = null,
     swipeLeft: SwipeSpec? = null,
     hint: SwipeHint? = null,
+    youLabel: String = "",
     modifier: Modifier = Modifier,
 ) {
     val motion = LocalAppSettings.current.motion
@@ -1525,6 +1543,11 @@ private fun AnswerCard(
                                 Spacer(Modifier.width(6.dp))
                                 AskerLabel(female = AnswerDisplay.askerIsFemale(answer))
                             }
+                            // Stips still ties it to you, anonymous or not, until it's detached (#39).
+                            if (answer.isOwner && youLabel.isNotEmpty()) {
+                                Spacer(Modifier.width(6.dp))
+                                YouLabel(youLabel)
+                            }
                         }
                         val ago = agoText(answer.postedAt)
                         // "· edited", which opens the answer's earlier versions, as on the site (v0.13, #10).
@@ -1563,7 +1586,9 @@ private fun AnswerCard(
                         Modifier.padding(top = 8.dp, end = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        quoted.forEach { target -> ReplyQuote(target, hidden = isHidden(target), onClick = { onJump(target.id) }) }
+                        quoted.forEach { target ->
+                            ReplyQuote(target, hidden = isHidden(target), youLabel = youLabel, onClick = { onJump(target.id) })
+                        }
                     }
                 }
                 val inBody = remember(reply, stipsOrder) {
@@ -1687,11 +1712,20 @@ private fun VoteButton(
     }
 }
 
-/** The answer a reply points at, as a quoted message: its author and its first lines; a tap goes there (v0.10). */
+/**
+ * The answer a reply points at, as a quoted message: its author and its first lines; a tap goes there (v0.10). One of
+ * your own answers says so (#39), "You · anonymous" when it's anonymous, until it's detached.
+ */
 @Composable
-private fun ReplyQuote(target: Answer, hidden: Boolean, onClick: () -> Unit) {
+private fun ReplyQuote(target: Answer, hidden: Boolean, youLabel: String, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val jumpLabel = stringResource(R.string.reply_jump)
+    val name = when {
+        hidden -> stringResource(R.string.reply_hidden)
+        target.isOwner && youLabel.isNotEmpty() ->
+            if (target.author.anonymous) stringResource(R.string.reply_you_as, youLabel, authorName(target.shownAuthor)) else youLabel
+        else -> authorName(target.shownAuthor)
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -1708,7 +1742,7 @@ private fun ReplyQuote(target: Answer, hidden: Boolean, onClick: () -> Unit) {
         )
         Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
             Text(
-                if (hidden) stringResource(R.string.reply_hidden) else authorName(target.shownAuthor),
+                name,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = accent,
@@ -1747,6 +1781,24 @@ private fun ModeratorPill(badge: ModeratorBadge) {
             Spacer(Modifier.width(3.dp))
             Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
+    }
+}
+
+/** "You" by your own answers (#39), anonymous ones too, until they're detached. */
+@Composable
+private fun YouLabel(text: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp),
+        )
     }
 }
 

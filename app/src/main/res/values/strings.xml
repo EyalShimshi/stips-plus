@@ -566,11 +566,11 @@
     <string name="settings_diagnostics_summary">Network log and load times</string>
     <string name="settings_home_layout">Home\'s layout</string>
     <string name="layout_hot_new">Hot, then new</string>
-    <string name="layout_hot_new_summary">The hottest questions as big cards, then everything new. The default.</string>
-    <string name="layout_website">Like the website</string>
-    <string name="layout_website_summary">The hottest questions, then today\'s questions by topic. No list of new questions.</string>
+    <string name="layout_hot_new_summary">The hottest questions as big cards, then everything new; today\'s topics are a tap away. The default.</string>
+    <string name="layout_website">Hot, then topics (like the website)</string>
+    <string name="layout_website_summary">The hottest questions, then today\'s questions by topic; the new questions are a tap away.</string>
     <string name="layout_new_only">New only</string>
-    <string name="layout_new_only_summary">Just the new questions, as they come.</string>
+    <string name="layout_new_only_summary">Just the new questions, as they come; today\'s topics are a tap away.</string>
     <string name="settings_home">Home</string>
     <string name="settings_hot_count">Hot questions on Home</string>
     <string name="settings_hot_hidden">Not shown in the \"New only\" layout.</string>
@@ -914,4 +914,46 @@
     <string name="channel_unanswered">Unanswered</string>
     <string name="unanswered_questions">Unanswered questions</string>
     <string name="empty_unanswered">No unanswered questions right now</string>
+    <!-- v0.23: copying an answer (#38); "you" and detaching anonymous items (#39) -->
+    <string name="copy_answer">Copy text</string>
+    <string name="answer_copied">Answer copied</string>
+    <string name="you_label">You</string>
+    <string name="you_label_female">You</string>
+    <string name="reply_you_as">%1$s · %2$s</string>
+    <string name="detach_body_anonymous">It already shows as anonymous, but Stips still ties it to you, which is why you can edit it. Once detached it\'s no longer yours: you can\'t edit it, and you won\'t get reports about it. This can\'t be undone.</string>
+    <string name="detach_question_body_anonymous">It already shows as anonymous, but Stips still ties it to you. Once detached it won\'t appear in your questions, you can\'t edit it, and you won\'t get reports about it. This can\'t be undone.</string>
+    <string name="answer_unlinked">Your answer is no longer tied to your account.</string>
+    <string name="question_unlinked">Your question is no longer tied to your account.</string>
+    <!-- v0.23: Home's switch between new questions and today's topics (#44) -->
+    <string name="home_view_new">New</string>
+    <string name="home_view_topics">Topics</string>
+    <!-- v0.23: the profile photo, cropped in a circle (#46) -->
+    <string name="photo_crop_title">Choose what shows in your profile photo</string>
+    <string name="photo_crop_hint">Drag and pinch to choose what shows in the circle</string>
+    <string name="photo_crop_use">Save</string>
+    <string name="photo_unreadable">That photo couldn\'t be opened. Try another one.</string>
+    <string name="photo_not_saved">Stips didn\'t save the photo. Try again in a moment.</string>
+    <!-- v0.23: the picture viewer's menu (#43) -->
+    <string name="image_actions">Picture options</string>
+    <string name="image_copy">Copy image</string>
+    <string name="image_share">Share image</string>
+    <string name="image_share_link">Share image link</string>
+    <string name="image_copied">Image copied</string>
+    <string name="image_share_failed">The picture couldn\'t be loaded</string>
+    <!-- v0.23: test builds and announcements (#41); download counts (#42) -->
+    <string name="settings_test_builds">Test builds</string>
+    <string name="settings_test_builds_summary">Also offer builds that are still being tested, before everyone gets them. They may have bugs.</string>
+    <string name="settings_announcements_group">Announcements</string>
+    <string name="settings_last_announcement">Last announcement</string>
+    <string name="settings_last_announcement_none">No announcements yet</string>
+    <string name="announcement_title">From Stips+</string>
+    <string name="announcement_ok">Got it</string>
+    <string name="announcement_open">Open</string>
+    <string name="settings_creator_group">For the creator</string>
+    <string name="settings_downloads">Downloads</string>
+    <string name="settings_downloads_summary">%1$d in all · %2$d of the newest release (build %3$d)</string>
+    <string name="settings_downloads_note">GitHub counts every APK download: updates, and a few by the app\'s own tests, too.</string>
+    <string name="settings_downloads_counting">Counting…</string>
+    <string name="settings_downloads_failed">GitHub didn\'t answer. Open this page again later.</string>
+    <string name="update_test_name">%1$s (test build)</string>
 </resources>

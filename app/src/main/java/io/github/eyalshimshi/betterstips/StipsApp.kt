@@ -9,6 +9,7 @@ import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import io.github.eyalshimshi.betterstips.data.AnonymousAnswers
+import io.github.eyalshimshi.betterstips.data.Announcements
 import io.github.eyalshimshi.betterstips.data.AppUpdates
 import io.github.eyalshimshi.betterstips.data.BlockStore
 import io.github.eyalshimshi.betterstips.data.ChannelsSource
@@ -107,7 +108,10 @@ class AppContainer(private val app: Application) {
     }
 
     /** New versions of Stips+ from GitHub (#25); built when the screens first ask, not for the widget or the checks. */
-    val updates: AppUpdates by lazy { AppUpdates(app, updateClient, appScope) }
+    val updates: AppUpdates by lazy { AppUpdates(app, updateClient, appScope) { settings.settings.value.testBuilds } }
+
+    /** Announcements from Stips+ (#41), read from its repository on GitHub's connections; built when the screens ask. */
+    val announcements: Announcements by lazy { Announcements(app, updateClient, appScope) }
 
     val settings = SettingsStore(app)
     val session = SessionStore(app, api, cookieJar)

@@ -85,9 +85,9 @@ enum class QuestionSwipe { None, Pin, Follow, PrivateReply, Share, CopyLink, Ope
 /**
  * What swiping an answer to the left does (#18); swiping it to the right replies (easy reply). [PrivateReply] messages
  * the answerer about the question (v0.18), a swipe only, not in the answer's ⋮ menu. No "delete" (#34): Stips lets you
- * detach your answer, not delete it; a saved "Delete" falls back to the default.
+ * detach your answer, not delete it; a saved "Delete" falls back to the default. [Copy] copies its text (#38).
  */
-enum class AnswerSwipe { None, Edit, Detach, History, PrivateReply, Report, Hide, HideUser }
+enum class AnswerSwipe { None, Edit, Detach, History, PrivateReply, Report, Hide, HideUser, Copy }
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
@@ -152,6 +152,12 @@ data class AppSettings(
     val notificationDetails: Boolean = false,
     /** Stips+ asks GitHub once a day whether a newer version is out, and offers it (#25). */
     val checkUpdates: Boolean = true,
+    /** Test builds (#41) are offered too, before they're released to everyone; off by default. */
+    val testBuilds: Boolean = false,
+    /** Your feeds (#40) also show as chips in Home's channel row. */
+    val feedChipsOnHome: Boolean = false,
+    /** New questions come into a feed by themselves while it's open (#40), one tag at a time, at Live's rate. */
+    val feedsLive: Boolean = false,
 ) {
     fun anonymousModeOn(now: Long = System.currentTimeMillis()): Boolean = anonymousUntil > now
 
@@ -248,6 +254,9 @@ class SettingsStore(context: Context) {
             .putString("myAnswerSwipe", next.myAnswerSwipe.name)
             .putBoolean("notificationDetails", next.notificationDetails)
             .putBoolean("checkUpdates", next.checkUpdates)
+            .putBoolean("testBuilds", next.testBuilds)
+            .putBoolean("feedChipsOnHome", next.feedChipsOnHome)
+            .putBoolean("feedsLive", next.feedsLive)
             .apply()
     }
 
@@ -293,6 +302,9 @@ class SettingsStore(context: Context) {
             myAnswerSwipe = enumOr(prefs.getString("myAnswerSwipe", null), defaults.myAnswerSwipe),
             notificationDetails = prefs.getBoolean("notificationDetails", defaults.notificationDetails),
             checkUpdates = prefs.getBoolean("checkUpdates", defaults.checkUpdates),
+            testBuilds = prefs.getBoolean("testBuilds", defaults.testBuilds),
+            feedChipsOnHome = prefs.getBoolean("feedChipsOnHome", defaults.feedChipsOnHome),
+            feedsLive = prefs.getBoolean("feedsLive", defaults.feedsLive),
         )
     }
 

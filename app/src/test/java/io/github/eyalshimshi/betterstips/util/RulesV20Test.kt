@@ -44,7 +44,14 @@ class RulesV20Test {
     fun app_neverInstallsAppsItself() {
         val manifest = source("AndroidManifest.xml").readText()
         assertFalse("asks to install apps", Regex("<uses-permission[^>]*REQUEST_INSTALL_PACKAGES").containsMatchIn(manifest))
-        assertFalse("hands files to an installer", manifest.contains("androidx.core.content.FileProvider"))
+        // A FileProvider is back in v0.23, for pictures only (#43, D-160): it lets another app read the cache's
+        // "shared" folder, where the viewer writes the picture being copied or shared, and nothing else.
+        if (manifest.contains("androidx.core.content.FileProvider")) {
+            val paths = source("res/xml/shared_files.xml").readText()
+            assertTrue("the shared pictures' folder", paths.contains("<cache-path name=\"shared\" path=\"shared/\""))
+            assertFalse("and only that", Regex("<(files|root|external|external-files|external-cache|external-media)-path").containsMatchIn(paths))
+            assertEquals("one folder", 1, Regex("-path ").findAll(paths).count())
+        }
         val code = source("java").walkTopDown().filter { it.isFile && it.extension == "kt" }.joinToString("\n") { it.readText() }
         for (sign in listOf("application/vnd.android.package-archive", "PackageInstaller", "ACTION_INSTALL_PACKAGE", "REQUEST_INSTALL_PACKAGES")) {
             assertFalse(sign, code.contains(sign))

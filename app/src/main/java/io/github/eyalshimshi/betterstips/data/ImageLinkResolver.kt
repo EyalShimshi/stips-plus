@@ -4,6 +4,10 @@ import io.github.eyalshimshi.betterstips.diag.NetLog
 import io.github.eyalshimshi.betterstips.util.ImageLinks
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -16,6 +20,18 @@ import okhttp3.Request
 class ImageLinkResolver(private val client: OkHttpClient) {
     private val cache = object : LinkedHashMap<String, ImageLinks.Picture>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageLinks.Picture>?): Boolean = size > CACHE_SIZE
+    }
+
+    private val _failed = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Links whose picture couldn't be shown in this session (#43): an attached one shows as the link again, so the
+     * browser can try, instead of only "Show image".
+     */
+    val failed: StateFlow<Set<String>> = _failed.asStateFlow()
+
+    fun markFailed(link: String) {
+        _failed.update { it + link }
     }
 
     /** The picture behind [source], or null when it can't be read. Throws only for cancellation. */

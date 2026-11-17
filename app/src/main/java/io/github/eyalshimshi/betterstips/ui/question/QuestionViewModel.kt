@@ -36,6 +36,9 @@ import kotlinx.coroutines.launch
 enum class QuestionMessage {
     AnswerPosted, AnswerEdited, AnswerDetached, VoteFailed, ActionFailed, Following, NotFollowing,
     Reported, Hidden, AnswerDeleted, QuestionEdited, QuestionDetached, FlowerSent, ReplyFixed,
+
+    /** An anonymous answer or question detached (#39): it was already anonymous, and now it isn't yours any more. */
+    AnswerUnlinked, QuestionUnlinked, AnswerCopied,
 }
 
 private data class PendingHide(val objType: String, val id: Long, val authorId: Long?)
@@ -363,12 +366,17 @@ class QuestionViewModel(
         }
     }
 
-    /** Removes the user's name from their answer: it shows as anonymous from now on. */
+    /**
+     * Detaches the user's answer from their account. A named answer shows as anonymous from now on; an anonymous one
+     * (#39) looks the same but isn't theirs any more: no editing, no "you" mark.
+     */
     fun detach(answer: Answer) {
         viewModelScope.launch {
             try {
                 repository.detachAnswer(answer.id)
-                _state.update { it.copy(message = QuestionMessage.AnswerDetached) }
+                _state.update {
+                    it.copy(message = if (answer.author.anonymous) QuestionMessage.AnswerUnlinked else QuestionMessage.AnswerDetached)
+                }
                 reloadAnswers()
             } catch (e: CancellationException) {
                 throw e
@@ -455,8 +463,14 @@ class QuestionViewModel(
         }
     }
 
+    /** Below Android 13, which confirms a copy by itself, the screen says the answer's text was copied (#38). */
+    fun copied() {
+        _state.update { it.copy(message = QuestionMessage.AnswerCopied) }
+    }
+
     fun detachQuestion() {
-        runAction(QuestionMessage.QuestionDetached) {
+        val anonymous = _state.value.question?.author?.anonymous == true
+        runAction(if (anonymous) QuestionMessage.QuestionUnlinked else QuestionMessage.QuestionDetached) {
             repository.detachQuestion(questionId)
             attempt { repository.question(questionId) }.onSuccess { q -> _state.update { it.copy(question = q) } }
         }

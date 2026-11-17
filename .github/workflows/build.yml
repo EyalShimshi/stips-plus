@@ -3,6 +3,9 @@ name: Build
 on:
   push:
     branches: [main]
+    # Posting an announcement (#41) is no new version: announcements.yml checks the file instead.
+    paths-ignore:
+      - announcements.json
   workflow_dispatch:
 
 # Read-only by default (#14): only the jobs that publish (release, report) can write, each saying so itself.
@@ -13,10 +16,11 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
-# A pre-release is published only when the APK builds, passes the unit tests and the APK check, and opens on an
+# A test build is published only when the APK builds, passes the unit tests and the APK check, and opens on an
 # emulator. Build 9 compiled and passed its tests, then crashed on every launch (#7). A hotfix the owner asks to rush
-# may skip the emulator with "[skip launch]" in its commit message; its release notes say so. Then it waits for the
-# owner's approval: the release job runs in the "release" environment, which has the owner as its required reviewer (#14).
+# may skip the emulator with "[skip launch]" in its commit message; its release notes say so. Since v0.23 (#41) every
+# push is a test build, `dev-N`, published without waiting: only apps with Settings → About → "Test builds" on are
+# offered it (0.18–0.22 only know `build-N`). Releasing one to everyone is release.yml, which the owner runs by hand.
 # Actions from outside GitHub are pinned to a commit (#14): a tag can be moved to other code, a commit can't.
 jobs:
   build:
@@ -179,8 +183,10 @@ jobs:
         with:
           name: apk
 
-      # The newest earlier releases: the build is also opened over the data of the newest one that still opens.
-      # Newest by build number: the API's own order put build-9 ahead of build-11 (build 12 was tested over build 6).
+      # The newest earlier builds: the build is also opened over the data of the newest one that still opens. Test
+      # builds (`dev-N`, #41) count too: the owner's phone moves from one to the next. A build released to everyone
+      # has both tags; it's downloaded once. Newest by build number: the API's own order put build-9 ahead of build-11
+      # (build 12 was tested over build 6).
       - name: Get earlier releases
         env:
           GH_TOKEN: ${{ github.token }}
@@ -189,9 +195,10 @@ jobs:
           mv "stipsplus-$RUN_NUMBER.apk" app.apk
           old=""
           tags=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '
-            [.[] | .tag_name | select(test("^build-[0-9]+$")) | ltrimstr("build-") | tonumber
-              | select(. != (env.RUN_NUMBER | tonumber))]
-            | sort | reverse | .[:4] | .[] | "build-\(.)"')
+            [.[] | .tag_name | select(test("^(build|dev)-[0-9]+$"))
+              | {tag: ., n: (sub("^(build|dev)-"; "") | tonumber)}
+              | select(.n != (env.RUN_NUMBER | tonumber))]
+            | group_by(.n) | map(.[0]) | sort_by(.n) | reverse | .[:4] | .[] | .tag')
           echo "Earlier releases, newest first: $tags"
           for tag in $tags; do
             if gh release download "$tag" -R "$GITHUB_REPOSITORY" -p 'stipsplus-*.apk' -O "$tag.apk"; then
@@ -281,14 +288,14 @@ jobs:
           retention-days: 7
 
   release:
-    name: Publish the pre-release
+    name: Publish the test build
     needs: [build, launch]
     # After the launch test passed, or when a hotfix skipped it ("[skip launch]"); never when it failed.
     if: ${{ !cancelled() && needs.build.result == 'success' && (needs.launch.result == 'success' || needs.launch.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Waits for the owner's approval (Settings → Environments → release → Required reviewers), #14.
-    environment: release
+    # No approval since v0.23 (#41): a test build reaches only apps that asked for test builds. Releasing it to everyone
+    # is release.yml, which only the owner can run.
     permissions:
       contents: write
     steps:
@@ -310,8 +317,11 @@ jobs:
         env:
           APK_BYTES: ${{ needs.build.outputs.bytes }}
           APK_CERT: ${{ needs.build.outputs.cert }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
           {
+            echo "> 🧪 **Test build.** Only apps with Settings → About → *Test builds* on are offered it. To release it to everyone: Actions → **Release** → Run workflow → \`$RUN_NUMBER\`."
+            echo
             cat RELEASE-NOTES.md
             echo
             echo "---"
@@ -327,17 +337,17 @@ jobs:
             echo "<sub>Commit ${GITHUB_SHA:0:7} · $(( ${APK_BYTES:-0} / 1024 )) KB · signing certificate SHA-256 ${APK_CERT:0:16}…</sub>"
           } > release-notes.md
 
-      - name: Publish a pre-release
+      - name: Publish the test build
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3 (3.0.4)
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Stips+ ${{ needs.build.outputs.version }}
+          tag_name: dev-${{ github.run_number }}
+          name: Stips+ ${{ needs.build.outputs.version }} (test)
           prerelease: true
           body_path: release-notes.md
           files: stipsplus-${{ github.run_number }}.apk
 
   # The outcome on the ci-status branch, which git can fetch. It never contains secrets: only error lines. It doesn't
-  # wait for the release, which waits for the owner's approval: the release shows on the Releases page.
+  # wait for the test build to be published: that shows on the Releases page.
   report:
     name: Report to the ci-status branch
     needs: [build, launch]
@@ -372,8 +382,8 @@ jobs:
             echo "sha: ${{ github.sha }}"
             echo "build-and-tests: ${BUILD_RESULT:-skipped}"
             echo "launch-test: ${LAUNCH_RESULT:-skipped}"
-            # The release waits for the owner's approval; this report doesn't wait for it. A hotfix may skip the launch test.
-            if [ "$BUILD_RESULT" = "success" ] && { [ "$LAUNCH_RESULT" = "success" ] || [ "$LAUNCH_RESULT" = "skipped" ]; }; then release="waiting for approval"; else release="skipped"; fi
+            # The test build publishes by itself (#41); this report doesn't wait for it. A hotfix may skip the launch test.
+            if [ "$BUILD_RESULT" = "success" ] && { [ "$LAUNCH_RESULT" = "success" ] || [ "$LAUNCH_RESULT" = "skipped" ]; }; then release="test build dev-${{ github.run_number }}"; else release="skipped"; fi
             echo "release: $release"
             echo "signing: ${SIGNING_SOURCE:-unknown}"
             echo "cert-sha256: ${APK_CERT:-unknown}"

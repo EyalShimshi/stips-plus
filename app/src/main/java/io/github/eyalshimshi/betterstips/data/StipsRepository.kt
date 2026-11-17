@@ -29,6 +29,7 @@ import io.github.eyalshimshi.betterstips.data.model.ThanksMessage
 import io.github.eyalshimshi.betterstips.data.model.UnreadCounts
 import io.github.eyalshimshi.betterstips.data.model.UserProfile
 import io.github.eyalshimshi.betterstips.data.parse.Parsers
+import io.github.eyalshimshi.betterstips.util.PhotoRules
 import io.github.eyalshimshi.betterstips.util.StipsTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -434,25 +435,43 @@ class StipsRepository(
         }
     }
 
-    /** Uploads a square JPEG as the profile photo, then sets the thumbnail to the whole square (the site's two steps). */
-    suspend fun uploadProfilePhoto(jpeg: ByteArray, size: Int) {
-        withSession {
+    /**
+     * Sends a square JPEG [side] px across as the profile photo, then sets the avatar to the whole square, measured on
+     * Stips' own 300 px copy (#46). Stips' upload says "success" even when it kept nothing (without a session, say), so
+     * the photo's stamp tells: false when it didn't change, also after signing in again and sending it once more.
+     */
+    suspend fun uploadProfilePhoto(jpeg: ByteArray, side: Int): Boolean {
+        val saved = withSession {
             val userId = session.session.value.userId ?: throw ApiException(ApiException.NOT_SIGNED_IN)
-            val response = api.upload("$SITE_URL/scripts/upload/photo.asp?photo_type=profile_photo", "photo.jpg", jpeg, "image/jpeg")
-            val (ok, error) = Parsers.uploadResult(response)
-            if (!ok) throw ApiException(ApiException.GENERAL, error)
-            api.call(
-                "profile.set_thumbnail",
-                buildJsonObject {
-                    put("userid", userId)
-                    put("x0", 0)
-                    put("x1", size)
-                    put("y0", 0)
-                    put("y1", size)
-                },
-            )
+            val before = userProfile(userId).photoStamp
+            suspend fun send(): Boolean {
+                val response = api.upload("$SITE_URL/scripts/upload/photo.asp?photo_type=profile_photo", "photo.jpg", jpeg, "image/jpeg")
+                val (ok, error) = Parsers.uploadResult(response)
+                if (!ok) throw ApiException(ApiException.GENERAL, error)
+                val after = userProfile(userId).photoStamp
+                return after != null && after != before
+            }
+            val took = send() || run {
+                session.ensureSession(force = true)
+                send()
+            }
+            if (took) {
+                val box = PhotoRules.thumbnailBox(side, PhotoRules.Square(0, 0, side))
+                api.call(
+                    "profile.set_thumbnail",
+                    buildJsonObject {
+                        put("userid", userId)
+                        put("x0", box[0])
+                        put("x1", box[1])
+                        put("y0", box[2])
+                        put("y1", box[3])
+                    },
+                )
+            }
+            took
         }
-        session.refreshProfile()
+        if (saved) session.refreshProfile()
+        return saved
     }
 
     /** 1 = up, -1 = down, 0 = clear (sending the current vote again clears it, as on the site). */

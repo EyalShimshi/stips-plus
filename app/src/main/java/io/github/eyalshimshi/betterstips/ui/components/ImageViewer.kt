@@ -1,5 +1,7 @@
 package io.github.eyalshimshi.betterstips.ui.components
 
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -16,9 +18,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.BrokenImage
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +38,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +61,7 @@ import coil.compose.AsyncImage
 import io.github.eyalshimshi.betterstips.R
 import io.github.eyalshimshi.betterstips.util.ImageLinks
 import io.github.eyalshimshi.betterstips.util.Links
+import kotlinx.coroutines.launch
 
 private const val MAX_ZOOM = 5f
 private const val DOUBLE_TAP_ZOOM = 2.5f
@@ -58,7 +69,9 @@ private const val DOUBLE_TAP_ZOOM = 2.5f
 /**
  * A photo, full screen on black: pinch or double-tap to zoom, drag to look around (#4). [previewUrl] (already in
  * the cache) shows at once while [fullUrl] loads on top of it. A picture from a link (#15) has no [fullUrl] while
- * its page is read, is [unavailable] when it can't be, and can be opened in the browser instead.
+ * its page is read, is [unavailable] when it can't be, and can be opened in the browser instead. The ⋮ menu (#43)
+ * copies or shares the picture itself, shares [link] (the picture's address by default), and opens the browser.
+ * [onLoadFailed] hears when the picture couldn't be loaded.
  */
 @Composable
 fun ImageViewerDialog(
@@ -68,6 +81,8 @@ fun ImageViewerDialog(
     onDismiss: () -> Unit,
     onOpenInBrowser: (() -> Unit)? = null,
     unavailable: Boolean = false,
+    link: String? = fullUrl,
+    onLoadFailed: (() -> Unit)? = null,
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -77,6 +92,10 @@ fun ImageViewerDialog(
         val haptics = LocalHapticFeedback.current
         var loaded by remember(fullUrl) { mutableStateOf(false) }
         var failed by remember(fullUrl) { mutableStateOf(false) }
+        val currentOnLoadFailed by rememberUpdatedState(onLoadFailed)
+        LaunchedEffect(unavailable, failed) {
+            if (unavailable || failed) currentOnLoadFailed?.invoke()
+        }
         BoxWithConstraints(
             Modifier
                 .fillMaxSize()
@@ -183,17 +202,21 @@ fun ImageViewerDialog(
             ) {
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close))
             }
-            if (onOpenInBrowser != null) {
-                FilledTonalIconButton(
-                    onClick = onOpenInBrowser,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .statusBarsPadding()
-                        .padding(12.dp),
-                ) {
-                    Icon(Icons.Outlined.OpenInBrowser, contentDescription = stringResource(R.string.image_open_browser))
-                }
+            // The picture that's showing: the full one once it's in, or the preview meanwhile.
+            val shownUrl = when {
+                fullUrl != null && loaded -> fullUrl
+                previewUrl != null -> previewUrl
+                else -> null
             }
+            ImageMenu(
+                imageUrl = shownUrl,
+                link = link,
+                onOpenInBrowser = onOpenInBrowser,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(12.dp),
+            )
             if (caption != null) {
                 Text(
                     caption,
@@ -212,7 +235,8 @@ fun ImageViewerDialog(
 /**
  * The picture behind an image link (#15), in the viewer above: an imgbb page is read first (only now, on the tap),
  * then the picture loads under a spinner. imgbb's small version is a square crop, so it isn't shown first: it would
- * stick out around a wide picture. "Open in browser" keeps the old way one tap away.
+ * stick out around a wide picture. "Open in browser" keeps the old way one tap away; a picture that can't be shown
+ * turns its attached link back into a link (#43).
  */
 @Composable
 fun ImageLinkViewer(source: ImageLinks.Source, onDismiss: () -> Unit) {
@@ -231,5 +255,87 @@ fun ImageLinkViewer(source: ImageLinks.Source, onDismiss: () -> Unit) {
         onDismiss = onDismiss,
         onOpenInBrowser = { openInBrowser(context, source.link) },
         unavailable = unavailable,
+        link = source.link,
+        onLoadFailed = { container.imageLinks.markFailed(source.link) },
     )
+}
+
+/**
+ * The viewer's ⋮ (#43): copy the picture, share it, share its link, open it in the browser. The picture itself waits
+ * until one has loaded ([imageUrl] null before).
+ */
+@Composable
+private fun ImageMenu(imageUrl: String?, link: String?, onOpenInBrowser: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val loader = LocalAppContainer.current.imageLoader
+    val scope = rememberCoroutineScope()
+    var open by remember { mutableStateOf(false) }
+    var working by remember { mutableStateOf(false) }
+    val copiedText = stringResource(R.string.image_copied)
+    val failedText = stringResource(R.string.image_share_failed)
+
+    fun withFile(action: (Uri, String) -> Unit) {
+        val url = imageUrl ?: return
+        if (working) return
+        working = true
+        scope.launch {
+            try {
+                val file = ImageSharing.prepare(context, loader, url)
+                if (file == null) Toast.makeText(context, failedText, Toast.LENGTH_SHORT).show() else action(file.first, file.second)
+            } finally {
+                working = false
+            }
+        }
+    }
+
+    Box(modifier) {
+        FilledTonalIconButton(onClick = { open = true }) {
+            if (working) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.image_actions))
+            }
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.image_copy)) },
+                leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
+                enabled = imageUrl != null,
+                onClick = {
+                    open = false
+                    withFile { uri, _ -> if (!ImageSharing.copy(context, uri)) Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show() }
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.image_share)) },
+                leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                enabled = imageUrl != null,
+                onClick = {
+                    open = false
+                    withFile { uri, mime -> ImageSharing.share(context, uri, mime) }
+                },
+            )
+            if (link != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.image_share_link)) },
+                    leadingIcon = { Icon(Icons.Outlined.Link, contentDescription = null) },
+                    onClick = {
+                        open = false
+                        shareText(context, link)
+                    },
+                )
+            }
+            val external = onOpenInBrowser ?: link?.let { { openInBrowser(context, it) } }
+            if (external != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.image_open_browser)) },
+                    leadingIcon = { Icon(Icons.Outlined.OpenInBrowser, contentDescription = null) },
+                    onClick = {
+                        open = false
+                        external()
+                    },
+                )
+            }
+        }
+    }
 }
