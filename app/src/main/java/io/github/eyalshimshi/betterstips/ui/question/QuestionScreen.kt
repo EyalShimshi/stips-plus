@@ -20,6 +20,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -187,6 +188,7 @@ import io.github.eyalshimshi.betterstips.ui.components.ImageViewerDialog
 import io.github.eyalshimshi.betterstips.ui.components.LinkifiedText
 import io.github.eyalshimshi.betterstips.ui.components.LocalAppContainer
 import io.github.eyalshimshi.betterstips.ui.components.LocalReplyInPrivate
+import io.github.eyalshimshi.betterstips.ui.feeds.LocalAddTagToFeed
 import io.github.eyalshimshi.betterstips.util.SwipeRules
 import io.github.eyalshimshi.betterstips.ui.components.MessageCard
 import io.github.eyalshimshi.betterstips.ui.components.QuestionMetaRow
@@ -1255,6 +1257,9 @@ private fun QuestionHero(
                             modifier = Modifier.padding(end = 6.dp),
                         )
                     }
+                    // A tap opens the tag; a long press adds it to one of your feeds (#40).
+                    val addTagToFeed = LocalAddTagToFeed.current
+                    val addToFeedLabel = stringResource(R.string.feed_add_to)
                     question.topics.forEach { topic ->
                         Text(
                             "#$topic",
@@ -1263,7 +1268,11 @@ private fun QuestionHero(
                             maxLines = 1,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { onOpenTopic(topic) }
+                                .combinedClickable(
+                                    onLongClickLabel = addToFeedLabel,
+                                    onLongClick = { addTagToFeed(topic) },
+                                    onClick = { onOpenTopic(topic) },
+                                )
                                 .padding(horizontal = 4.dp, vertical = 4.dp),
                         )
                     }

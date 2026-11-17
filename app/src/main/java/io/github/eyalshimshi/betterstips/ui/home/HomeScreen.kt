@@ -86,6 +86,7 @@ import io.github.eyalshimshi.betterstips.data.api.ApiException
 import io.github.eyalshimshi.betterstips.data.api.RateGuard
 import io.github.eyalshimshi.betterstips.data.model.Channel
 import io.github.eyalshimshi.betterstips.data.model.FeedQuery
+import io.github.eyalshimshi.betterstips.data.model.FeedOrder
 import io.github.eyalshimshi.betterstips.data.model.FeedSort
 import io.github.eyalshimshi.betterstips.data.model.HotWindow
 import io.github.eyalshimshi.betterstips.data.model.Question
@@ -97,6 +98,7 @@ import io.github.eyalshimshi.betterstips.util.TutorialRules
 import io.github.eyalshimshi.betterstips.data.QuestionSwipe
 import io.github.eyalshimshi.betterstips.data.Tutorials
 import io.github.eyalshimshi.betterstips.ui.question.LocalQuestionActions
+import io.github.eyalshimshi.betterstips.ui.feeds.TagFeedViewModel
 import io.github.eyalshimshi.betterstips.ui.question.questionSwipeLabel
 import io.github.eyalshimshi.betterstips.ui.components.LocalQuestionRowHint
 import io.github.eyalshimshi.betterstips.ui.components.LocalTipsAllowed
@@ -216,22 +218,35 @@ fun HomeScreen(
     // the new questions or today's topics. A channel, or the Unanswered category (#37), is a list of new questions of
     // its own, without the switch; Unanswered also without the hot questions: they have answers.
     val layout = settings.homeLayout
-    val canSwitch = query.channelName == null && !query.unanswered
+    // One of your feeds (#40), picked in the channel row when Settings → Feeds puts them there: its own list instead.
+    val tagFeeds by container.tagFeeds.feeds.collectAsStateWithLifecycle()
+    var homeFeedId by rememberSaveable { mutableStateOf<String?>(null) }
+    val homeFeed = if (settings.feedChipsOnHome && settings.showChannelChips) tagFeeds.firstOrNull { it.id == homeFeedId } else null
+    val homeFeedVm = homeFeed?.let { feed -> appViewModel(key = "home-feed-" + feed.id) { TagFeedViewModel(it.repository, feed) } }
+    val canSwitch = homeFeed == null && query.channelName == null && !query.unanswered
     var topicsPicked by rememberSaveable(layout) { mutableStateOf(layout == HomeLayout.LikeWebsite) }
     val showsSections = canSwitch && topicsPicked
-    val showsHot = layout != HomeLayout.NewOnly && !query.unanswered
-    val showsNew = !showsSections
+    val showsHot = homeFeed == null && layout != HomeLayout.NewOnly && !query.unanswered
+    val showsNew = homeFeed == null && !showsSections
     fun loadsNew(next: FeedQuery) = !(topicsPicked && next.channelName == null && !next.unanswered)
 
     // Tapping Home again scrolls back to the top (v0.12) and reloads it, like entering it again (v0.13, #10).
     ScrollToTopOnReselect(Routes.HOME, listState) {
-        if (showsSections) sectionsVm.refresh() else feedVm.refresh()
+        when {
+            homeFeedVm != null -> homeFeedVm.refresh()
+            showsSections -> sectionsVm.refresh()
+            else -> feedVm.refresh()
+        }
         if (showsHot) hotVm.load(query.channelName, settings.hotWindow, force = true)
     }
 
     // Entering Home from the bottom bar, or coming back to the app on it, brings it up to date (v0.16): the hot
     // questions again, and new questions on top of the list as Live adds them, so what you were reading stays put.
     RefreshOnEnter(Routes.HOME) {
+        if (homeFeedVm != null) {
+            if (homeFeedVm.isStale()) homeFeedVm.refresh()
+            return@RefreshOnEnter
+        }
         if (showsHot) hotVm.refreshIfStale(query.channelName, settings.hotWindow)
         if (showsSections) {
             // The sections start over on a refresh, so only from the top.
@@ -245,6 +260,28 @@ fun HomeScreen(
     }
 
     LaunchedEffect(showsNew) { if (showsNew) feedVm.ensureLoaded() }
+    LaunchedEffect(homeFeed) {
+        if (homeFeed != null && homeFeedVm != null) {
+            homeFeedVm.update(homeFeed)
+            homeFeedVm.ensureLoaded()
+        }
+    }
+    // Live in a feed (#40), as in the Feeds tab: one of its tags at a time, newest-first feeds only.
+    LaunchedEffect(homeFeed?.id, homeFeed?.order, settings.feedsLive, settings.liveIntervalSeconds) {
+        val vm = homeFeedVm ?: return@LaunchedEffect
+        if (!settings.feedsLive || homeFeed?.order != FeedOrder.New) return@LaunchedEffect
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            var misses = 0
+            while (true) {
+                delay(AppSettings.liveDelayMs(settings.liveIntervalSeconds, misses))
+                if (!RateGuard.allowBackground()) continue
+                val atTop = listState.firstVisibleItemIndex <= 3
+                val added = vm.pollOne()
+                misses = if (added < 0) misses + 1 else 0
+                if (added > 0 && atTop) listState.animateScrollToItem(0)
+            }
+        }
+    }
     LaunchedEffect(showsSections) { if (showsSections) sectionsVm.ensureLoaded() }
     LaunchedEffect(query.channelName, showsHot, settings.hotWindow) {
         if (showsHot) hotVm.load(query.channelName, settings.hotWindow)
@@ -362,7 +399,14 @@ fun HomeScreen(
                         showChannels = true,
                         showSort = false,
                         showUnanswered = true,
+                        feeds = if (settings.feedChipsOnHome) tagFeeds else emptyList(),
+                        selectedFeedId = homeFeed?.id,
+                        onFeed = { feed ->
+                            homeFeedId = feed.id
+                            scope.launch { listState.scrollToItem(0) }
+                        },
                         onChange = {
+                            homeFeedId = null
                             feedVm.setQuery(it, loadNow = loadsNew(it))
                             scope.launch { listState.scrollToItem(0) }
                         },
@@ -385,7 +429,9 @@ fun HomeScreen(
             // The New list's heading, or, on all of Stips, the switch between new questions and today's topics (#44).
             item(key = "new-header") {
                 NewHeader(
-                    title = stringResource(if (query.unanswered) R.string.unanswered_questions else R.string.new_questions),
+                    title = homeFeed?.label ?: stringResource(if (query.unanswered) R.string.unanswered_questions else R.string.new_questions),
+                    // A feed's own Live is in Settings → Feeds.
+                    showLive = homeFeed == null,
                     live = settings.autoRefreshNew,
                     seconds = settings.liveIntervalSeconds,
                     tip = liveTip,
@@ -416,6 +462,20 @@ fun HomeScreen(
                 onRetry = { sectionsVm.retry() },
                 listState = listState,
                 modifier = Modifier.padding(padding),
+                header = header,
+            )
+        } else if (homeFeed != null && homeFeedVm != null) {
+            val feedState by homeFeedVm.state.collectAsStateWithLifecycle()
+            QuestionList(
+                state = feedState,
+                channels = channels,
+                emptyTitle = stringResource(if (homeFeed.unansweredOnly) R.string.feed_empty_unanswered else R.string.feed_empty),
+                onOpen = { onOpenQuestion(it.id) },
+                onRefresh = { homeFeedVm.refresh() },
+                onLoadMore = { homeFeedVm.loadMore() },
+                onRetry = { homeFeedVm.retry() },
+                modifier = Modifier.padding(padding),
+                listState = listState,
                 header = header,
             )
         } else {
@@ -632,6 +692,7 @@ private fun NewHeader(
     onLiveOptions: () -> Unit,
     topics: Boolean? = null,
     onTopics: (Boolean) -> Unit = {},
+    showLive: Boolean = true,
 ) {
     Column {
         Row(
@@ -657,7 +718,7 @@ private fun NewHeader(
                 Spacer(Modifier.width(8.dp))
             }
             // Live adds new questions as they come, so it's there with them only.
-            if (topics != true) LiveChip(live = live, seconds = seconds, onToggle = onToggleLive, onOptions = onLiveOptions)
+            if (topics != true && showLive) LiveChip(live = live, seconds = seconds, onToggle = onToggleLive, onOptions = onLiveOptions)
         }
         TipPill(tip, Modifier.align(Alignment.End).padding(end = 8.dp), expand = true)
     }

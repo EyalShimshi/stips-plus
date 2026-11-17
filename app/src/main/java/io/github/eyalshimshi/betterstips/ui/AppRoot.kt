@@ -136,6 +136,13 @@ import io.github.eyalshimshi.betterstips.ui.settings.SettingsScreen
 import io.github.eyalshimshi.betterstips.ui.signin.SignInScreen
 import io.github.eyalshimshi.betterstips.ui.signin.IntroScreen
 import io.github.eyalshimshi.betterstips.ui.theme.LocalAppSettings
+import io.github.eyalshimshi.betterstips.ui.feeds.AddTagToFeedSheet
+import io.github.eyalshimshi.betterstips.ui.feeds.FeedsScreen
+import io.github.eyalshimshi.betterstips.ui.feeds.LocalAddTagToFeed
+import io.github.eyalshimshi.betterstips.ui.feeds.SharedFeedDialog
+import io.github.eyalshimshi.betterstips.data.model.TagFeed
+import androidx.compose.material.icons.filled.DynamicFeed
+import androidx.compose.material.icons.outlined.DynamicFeed
 import io.github.eyalshimshi.betterstips.ui.updates.AnnouncementDialog
 import io.github.eyalshimshi.betterstips.ui.user.UserProfileScreen
 import io.github.eyalshimshi.betterstips.util.AnnouncementRules
@@ -175,6 +182,7 @@ object Routes {
     const val HOT = "hot"
     const val NETLOG = "netlog"
     const val PENPALS = "penpals"
+    const val FEEDS = "feeds"
     const val ASK = "ask?channel={channel}"
     const val SEND_TO = "send?text={text}"
 
@@ -210,6 +218,8 @@ private data class Tab(val route: String, val label: Int, val icon: ImageVector,
 
 private val tabs = listOf(
     Tab(Routes.HOME, R.string.tab_home, Icons.Outlined.Home, Icons.Filled.Home),
+    // Your feeds (#40), next to Home.
+    Tab(Routes.FEEDS, R.string.tab_feeds, Icons.Outlined.DynamicFeed, Icons.Filled.DynamicFeed),
     Tab(Routes.PENPALS, R.string.tab_penpals, Icons.Outlined.Groups, Icons.Filled.Groups),
     Tab(Routes.CHATS, R.string.tab_chats, Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubble),
     Tab(Routes.PROFILE, R.string.tab_profile, Icons.Outlined.Person, Icons.Filled.Person),
@@ -299,10 +309,19 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
     val currentOnLinkHandled by rememberUpdatedState(onLinkHandled)
     // A notice from Stips' team whose phone notification was tapped (v0.18, #27): shown in full over the app.
     var teamNotice by remember { mutableStateOf<StipsNotification?>(null) }
+    // A feed someone shared (#40): offered to add, from a link outside the app or inside it.
+    val sharedFeed = remember { mutableStateOf<TagFeed?>(null) }
+    // A tag on its way into one of your feeds (#40): a long press on a question's #tag, or the tag page's button.
+    var feedTag by remember { mutableStateOf<String?>(null) }
+    val addTagToFeed = remember { { tag: String -> feedTag = tag } }
     LaunchedEffect(pendingLink) {
         val link = pendingLink ?: return@LaunchedEffect
         welcome = false
-        if (link is DeepLink.TeamNotice) teamNotice = link.notice else openLink(navController, link)
+        when (link) {
+            is DeepLink.TeamNotice -> teamNotice = link.notice
+            is DeepLink.Feed -> sharedFeed.value = link.feed
+            else -> openLink(navController, link)
+        }
         currentOnLinkHandled()
         // A tapped phone notification marked its notifications read: the bell's badge follows at once.
         if (signedIn) counts = counts.copy(notifications = bellBadge(container, stipsBellCount[0], listed = false))
@@ -386,6 +405,7 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
                 val link = Links.deepLink(uri)
                 val image = if (link == null) ImageLinks.classify(uri) else null
                 when {
+                    link is DeepLink.Feed -> sharedFeed.value = link.feed
                     link != null -> openLink(navController, link)
                     image != null -> imageLink.value = image
                     else -> openInBrowser(context, uri)
@@ -410,6 +430,7 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
         LocalUriHandler provides uriHandler,
         LocalOpenProfile provides openProfile,
         LocalReplyInPrivate provides replyInPrivate,
+        LocalAddTagToFeed provides addTagToFeed,
         LocalUnreadCounts provides counts,
         LocalNow provides now,
         LocalTabReselects provides tabReselects,
@@ -501,6 +522,22 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
         )
     }
     imageLink.value?.let { source -> ImageLinkViewer(source, onDismiss = { imageLink.value = null }) }
+    feedTag?.let { tag -> AddTagToFeedSheet(tag, onDismiss = { feedTag = null }) }
+    sharedFeed.value?.let { feed ->
+        SharedFeedDialog(
+            feed,
+            onAdd = {
+                val store = container.tagFeeds
+                val added = feed.copy(id = store.newId())
+                if (store.save(added)) {
+                    store.open(added.id)
+                    navigateToTab(navController, Routes.FEEDS)
+                }
+                sharedFeed.value = null
+            },
+            onDismiss = { sharedFeed.value = null },
+        )
+    }
     // Not when a link, a shortcut or a notification opened the app (#41): that's what the person came for, and the
     // launch test's shortcut checks see their own screens. The next time the app is opened, it shows.
     val openedByLink = rememberSaveable { pendingLink != null }
@@ -570,6 +607,8 @@ private fun openLink(navController: NavHostController, link: DeepLink) {
         // Shown over the app by AppRoot, not a screen to go to (v0.18).
         is DeepLink.TeamNotice -> Unit
         is DeepLink.SendTo -> navController.navigate(Routes.sendTo(link.text))
+        // A shared feed (#40) is offered by AppRoot first; on its own, the Feeds tab.
+        is DeepLink.Feed -> navigateToTab(navController, Routes.FEEDS)
     }
 }
 
@@ -625,7 +664,7 @@ private fun RateLimitBanner() {
 }
 
 /** The tabs that refresh when entered from the bottom bar or when the app comes back to them (v0.16); not Profile. */
-private val REFRESHED_TABS = setOf(Routes.HOME, Routes.PENPALS, Routes.CHATS)
+private val REFRESHED_TABS = setOf(Routes.HOME, Routes.FEEDS, Routes.PENPALS, Routes.CHATS)
 
 @Composable
 private fun BottomBar(
@@ -788,6 +827,12 @@ private fun AppNavHost(navController: NavHostController, modifier: Modifier, onN
         }
         composable(Routes.PENPALS) {
             PenPalsScreen(onOpenConversation = ::openConversation, onSignIn = ::signIn)
+        }
+        composable(Routes.FEEDS) {
+            FeedsScreen(
+                onOpenQuestion = ::openQuestion,
+                onOpenFeedSettings = { navController.navigate(Routes.settingsPage(SettingsPage.Feeds)) { launchSingleTop = true } },
+            )
         }
         composable(
             Routes.ASK,

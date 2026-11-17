@@ -46,13 +46,10 @@ class Announcements(context: Context, private val client: OkHttpClient, private 
                 val now = System.currentTimeMillis()
                 if (!AnnouncementRules.dueForCheck(prefs.getLong(KEY_CHECKED, 0L), now, failedAt)) return@withLock
                 val text = fetch()
-                if (text == null) {
-                    failedAt = now
-                    return@withLock
-                }
-                // A file that can't be read keeps the last good one, so a typo doesn't wipe what people already saw.
-                val parsed = AnnouncementRules.parse(text)
-                if (parsed.isEmpty() && text.isNotBlank() && !emptyFile(text)) {
+                // Only a file that isn't the file at all is a failed read: an empty list is a list (announcements
+                // taken down), and the last good file stays otherwise.
+                val parsed = text?.let(AnnouncementRules::parseOrNull)
+                if (parsed == null) {
                     failedAt = now
                     return@withLock
                 }
@@ -84,9 +81,6 @@ class Announcements(context: Context, private val client: OkHttpClient, private 
             null
         }
     }
-
-    /** A file with no announcements in it on purpose: `{"announcements": []}`. */
-    private fun emptyFile(text: String): Boolean = text.replace(Regex("\\s"), "").let { it == "{\"announcements\":[]}" || it == "[]" }
 
     private companion object {
         const val KEY_FILE = "file"

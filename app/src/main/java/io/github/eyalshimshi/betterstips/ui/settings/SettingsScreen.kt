@@ -1,5 +1,8 @@
 package io.github.eyalshimshi.betterstips.ui.settings
 
+import io.github.eyalshimshi.betterstips.ui.feeds.FeedsSettingsContent
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Science
@@ -150,6 +153,7 @@ enum class SettingsPage(val route: String) {
     Account("account"),
     Look("appearance"),
     Home("home"),
+    Feeds("feeds"),
     Answers("reading"),
     Chats("chats"),
     Notifications("notifications"),
@@ -187,6 +191,7 @@ fun SettingsScreen(
             SettingsPage.Account -> R.string.settings_account
             SettingsPage.Look -> R.string.settings_appearance
             SettingsPage.Home -> R.string.settings_home
+            SettingsPage.Feeds -> R.string.settings_feeds
             SettingsPage.Answers -> R.string.settings_answers
             SettingsPage.Chats -> R.string.dm_settings
             SettingsPage.Notifications -> R.string.notifications_title
@@ -213,6 +218,7 @@ fun SettingsScreen(
                 SettingsPage.Account -> AccountPage(snackbar, onOpenMyProfile, onSignIn)
                 SettingsPage.Look -> LookPage(settings)
                 SettingsPage.Home -> HomePage(settings)
+                SettingsPage.Feeds -> FeedsSettingsContent(settings)
                 SettingsPage.Answers -> AnswersPage(settings)
                 // The same rows as the DM settings sheet in the chats screens (v0.12), with its preview (#12).
                 SettingsPage.Chats -> ChatSettingsContent(snackbar)
@@ -251,7 +257,7 @@ private fun MainPage(settings: AppSettings, onOpenPage: (SettingsPage) -> Unit, 
     GroupRow(
         stringResource(R.string.settings_appearance),
         0,
-        4,
+        5,
         { onOpenPage(SettingsPage.Look) },
         summary = stringResource(
             R.string.settings_look_summary,
@@ -263,7 +269,7 @@ private fun MainPage(settings: AppSettings, onOpenPage: (SettingsPage) -> Unit, 
     GroupRow(
         stringResource(R.string.settings_home),
         1,
-        4,
+        5,
         { onOpenPage(SettingsPage.Home) },
         summary = joined(
             stringResource(layoutLabel(settings.homeLayout)),
@@ -271,10 +277,23 @@ private fun MainPage(settings: AppSettings, onOpenPage: (SettingsPage) -> Unit, 
         ),
         icon = Icons.Outlined.Home,
     )
+    // Your feeds (#40).
+    val feedCount = container.tagFeeds.feeds.collectAsStateWithLifecycle().value.size
+    GroupRow(
+        stringResource(R.string.settings_feeds),
+        2,
+        5,
+        { onOpenPage(SettingsPage.Feeds) },
+        summary = joined(
+            pluralStringResource(R.plurals.feed_count, feedCount, feedCount),
+            if (settings.feedChipsOnHome) stringResource(R.string.settings_feed_chips_short) else null,
+        ),
+        icon = Icons.Outlined.DynamicFeed,
+    )
     GroupRow(
         stringResource(R.string.settings_answers),
-        2,
-        4,
+        3,
+        5,
         { onOpenPage(SettingsPage.Answers) },
         summary = joined(
             if (settings.easyReply) stringResource(R.string.settings_easy_reply) else null,
@@ -285,8 +304,8 @@ private fun MainPage(settings: AppSettings, onOpenPage: (SettingsPage) -> Unit, 
     val phoneOn = settings.backgroundNotifications && Notifier.canPost(context)
     GroupRow(
         stringResource(R.string.dm_settings),
-        3,
         4,
+        5,
         { onOpenPage(SettingsPage.Chats) },
         summary = joined(
             if (settings.chatEasyReply) stringResource(R.string.settings_easy_reply) else null,

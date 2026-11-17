@@ -61,10 +61,16 @@ object AnnouncementRules {
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The announcements in the file, in its order (newest first); anything unreadable is left out. */
-    fun parse(text: String?): List<Announcement> {
-        if (text.isNullOrBlank() || text.length > MAX_BYTES) return emptyList()
-        val root = runCatching { json.parseToJsonElement(text) }.getOrNull() ?: return emptyList()
-        val list = root.asObject()?.arr("announcements") ?: root.asArray() ?: return emptyList()
+    fun parse(text: String?): List<Announcement> = parseOrNull(text).orEmpty()
+
+    /**
+     * The announcements in a file that could be read, possibly none; null when it isn't the file at all (not JSON, or
+     * no list of announcements): the app keeps the last good one then.
+     */
+    fun parseOrNull(text: String?): List<Announcement>? {
+        if (text.isNullOrBlank() || text.length > MAX_BYTES) return null
+        val root = runCatching { json.parseToJsonElement(text) }.getOrNull() ?: return null
+        val list = root.asObject()?.arr("announcements") ?: root.asArray() ?: return null
         return list.mapNotNull { element -> element.asObject()?.let(::announcement) }.distinctBy { it.id }
     }
 

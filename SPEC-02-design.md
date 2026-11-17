@@ -52,7 +52,7 @@ flowchart TD
 
 ## 4. Navigation and adaptive layout
 
-- **Bottom bar:** Home · Pen pals · Chats · Profile (icons with labels; filled icon when selected; Chats shows the unread count). It hides on inner screens, sliding away. Tapping the open tab scrolls it back to the top (v0.12, D-78) and reloads it, its pull-to-refresh spinner showing (v0.13, D-89).
+- **Bottom bar:** Home · Feeds (v0.23) · Pen pals · Chats · Profile (icons with labels; filled icon when selected; Chats shows the unread count). It hides on inner screens, sliding away. Tapping the open tab scrolls it back to the top (v0.12, D-78) and reloads it, its pull-to-refresh spinner showing (v0.13, D-89).
 - **Back:** system back and predictive back everywhere; the top bar's back arrow mirrors in RTL.
 - **Motion (D-32):** a new screen slides in from the end over the current one, which drifts a quarter of the way toward the start; Back reverses it. Tabs fade through (out 90 ms, in 210 ms). During the predictive back gesture the screen follows the finger toward the edge it was swiped from, and the screen below slides in from a quarter away. The *Animations* switch turns all of it off.
 - **Deep links:** `https://stips.co.il/ask/<id>` opens the question, `/profile/<id>` the profile, `/messages` the Chats tab. The same links work from phone notifications and inside answers.
@@ -88,7 +88,9 @@ flowchart TD
 - **After pulling to refresh (v0.18, D-131):** the rows change in place; only Live and the entry check slide new ones in.
 - **Tips (v0.18, D-138):** as Home shows, the first question in sight slides most of the way right, with a dark pill over it ("Swipe right: Pin or unpin"), back, then left; afterwards a pill under the Live chip, "Long-press Live to choose how often it checks". Each once, unless it's used first (three times at most until v0.20, D-149).
 - **Unanswered (v0.22, D-155):** the chip row reads *All* · *Unanswered* · the channels. *Unanswered* is Stips+'s own category, so it has no channel's color dot: a ✨ and a 1 dp outline in Stips+'s colors (green → blue → purple, toned for the theme, as Stips+'s badge), and the usual secondaryContainer when picked. One category at a time, as the channels. Picked, Home is just the list: no hot shelf (and no sections in the website-like layout), "Unanswered questions" over it with the Live chip, newest first, only questions with no answers; Live adds new ones on top. More load as you scroll; when a few pages of New hold none, "That's everything for now". Empty: "No unanswered questions right now". Hiding the chip row returns to *All*.
-
+- **New or topics (v0.23, D-163):** under the hot cards, in every layout, a segmented *New \| Topics* switch heads the list: *New* is the list above (with the Live chip after it), *Topics* today's questions in sections as in the website-like layout. The layout picks which one Home opens on (*Hot, then topics (like the website)*, Hebrew exactly "חמות, ואז נושאים (כמו באתר)", opens on *Topics*); a switch keeps its side until the layout changes.
+- **Feeds on Home (v0.23, D-166):** with Settings → Feeds → *Show my feeds on Home*, your feeds follow *Unanswered* in the chip row, before the channels (plain filter chips with their emoji and name; the feeds icon when a feed has no emoji). Picked, Home is that feed's list, as with *Unanswered*: no hot shelf or switch, the feed's name over it, and Live when *Live updates in feeds* is on and the feed is newest-first.
+- **Announcements (v0.23, D-157):** as the app opens, a new announcement is a dialog: a 📣 icon, its title (or "From Stips+"), its text (links tappable), *Got it*, and *Open* or its own button text when it has a link. Once each; not over the intro, the blocked-account screen or a team notice, nor when a link or notification opened the app.
 ### 5.2 Question (compact hero)
 
 ```
@@ -135,7 +137,8 @@ flowchart TD
 - **v0.18:** the top bar's ⋮ starts with *Reply in private* (💬) when the asker isn't anonymous or you (D-137); the left swipe on someone's answer can be set to it too. Moderator pills always show (D-130). Tips (D-138): opening a question with answers, the first answer in sight slides right a little with "Swipe right to reply" over it; after posting an answer, it slides left with what that swipe does ("Swipe left: Edit answer").
 - **Votes (v0.21, D-153):** the arrows are 40 dp circles in 48 dp touch targets. The one you picked is green (up; `#188038`, dark `#81C995`) or red (down; error) on an 18 % tint of it, whatever the score's sign, and pops to 1.3× and back as you pick it (with moving elements on); the score turns bold once you voted. TalkBack reads each arrow as a toggle, checked when it's yours.
 - **Your answer's swipe (v0.21, D-152):** the left-swipe choices for your own answer are *Nothing*, *Edit answer*, *Detach from my account* and *Edit history*; *Delete* is gone (Stips doesn't delete your answers, it detaches them). The ⋮ menu offers *Delete answer* only where Stips' own permissions allow it.
-
+- **v0.23:** every answer's ⋮ has *Copy text* (⧉; "Answer copied"), and it's a left-swipe choice too (D-161). Your answers show a small **You** pill after the name (secondary container; Hebrew "אתה" or "את" by your gender), anonymous ones as well; quotes of them read "You" ("You · Anonymous") (D-162). *Detach from my account* is offered for your anonymous answers and question too, with their own confirmation. A long press on a #tag (haptic tick) opens *Add #tag to a feed* (D-166). An attached picture link (imgbb and others) is only *Show image* until its picture fails to load, then the link (D-160). Sharing the question sends only its link (D-164).
+- **The picture viewer's ⋮ (v0.23, D-160):** over the picture, top end: *Copy image*, *Share image*, *Share image link* (the link as attached, for picture links) and *Open in browser*; for question covers and profile photos too.
 ### 5.3 Chats
 
 ```
@@ -262,7 +265,7 @@ Picked rows are tinted secondaryContainer. Below 5 flowers (not a moderator) the
 
 - Tapping any name or avatar (answers, thanks wall, chats, notifications) opens that user's profile. On the profile, tapping the photo opens it full screen.
 - Tabs: **Thanks wall** (first and default; others can write on it) · **Activity**.
-- On your own profile: the camera button picks a new photo (system photo picker; straightened, cropped square, uploaded), *Edit bio* opens a dialog (1000 characters since v0.18, D-129, with a hint about the quote line).
+- On your own profile: the camera button picks a new photo (system photo picker; straightened, cropped square, uploaded; since v0.23, D-159, a full-screen step first: the photo on black under a 62 % dark scrim with a clear circle and a thin white ring, "Drag and pinch to choose what shows in the circle", dragged and pinched (a double tap starts over), *Cancel* and *Save*; then a ring spins around the avatar until Stips has it, or "Stips didn't save the photo. Try again in a moment."), *Edit bio* opens a dialog (1000 characters since v0.18, D-129, with a hint about the quote line).
 - **Bio (v0.18, D-129):** centered on a surfaceContainerLow card; a last line in `~tildes~` shows under it as "~ words ~", smaller and lighter, as on the site.
 - Signed out, the Profile tab is a `secondaryContainer` card — "Sign in to answer, chat and see your questions" + *Sign in*; then Saved and Settings.
 - **Special accounts (v0.9, D-64):** Stips' gradient background as a 64 dp rounded band behind the top of the photo; the name in Stips' purple when it highlights it, with a blue ✓; an *Organization* (or *Stips' own account*) pill and `custom_rank` pills first among the badges; no age pill or numbers when Stips hides them. In expert mode, "user #id" under the name and *Server details* in the top bar.
@@ -296,6 +299,7 @@ Picked rows are tinted secondaryContainer. Below 5 flowers (not a moderator) the
 
 ### 5.7 Settings
 
+**v0.23:** the main page adds **Feeds** (under *Home*; the number of feeds): *Show my feeds on Home*, *Live updates in feeds* (one tag every Live interval, in turn), then **Your feeds** as rows (emoji, name, "3 tags · New"; a tap edits it), each with ↑ ↓ and ⋮ (*Share*, *Delete*), and *Create a feed*; then the ready-made feeds with *Add*. *Home* renames *Like the website* to *Hot, then topics (like the website)* ("חמות, ואז נושאים (כמו באתר)"); every layout's summary says the other list is a tap away. *Account* → *Profile photo and bio* opens your profile again (D-163). *About* adds **Test builds** (a switch, off: "Also offer builds that are still being tested…"; switching it checks again), **Last announcement** (opens it, or "No announcements yet"), and, under *For the creator* and only for Stips+'s creator, **Downloads** ("137 in all · 17 of the newest release (build 37)", with a note on what GitHub counts) (D-156–D-158). The updates row names a test build "0.23.39 (test build)".
 **v0.21:** *Appearance* → *Interface* starts with **Language** (D-150): segmented buttons *System* · *עברית* · *English*, under "System follows the phone's language (English)."; picking one turns the app at once. *Questions and answers* → *Swipe left on your answer* loses *Delete answer* (D-152).
 
 **v0.20:** *About* → *Update to 0.20.34* opens the APK in the browser (D-145); the row has no *Install* or download progress any more.
@@ -341,6 +345,26 @@ Before v0.9, groups on one page (DESIGN-PHILOSOPHY §8): **Stips account** (sign
 - *New post* opens a sheet: 255 characters, "My last message", *Send*; or explains what's missing (sign in, 5 flowers, the posting interval).
 - Signed-in users outside ages 13–21 see Stips' "for teens" message instead of the board.
 
+### 5.11 Feeds (tab, v0.23, D-166)
+
+```
+┌──────────────────────────────────────┐
+│ Feeds                          +  ⚙  │  + new feed · ⚙ Settings → Feeds
+│ 🎮 Gaming │ 📚 Studies │ 🎵 Music …  │  scrollable tabs; swipe between
+│ ( New | Hot | Mixed )            ⋮   │  order; ⋮ Edit · Share · Delete
+│ #games · #xbox · #ps5 · #fortnite …  │  the tags, two lines; tap to edit
+│ ▢  Which console should I buy?…      │  the usual rows (swipes, Live)
+│    3 answers · 2 pins · 5 min · Tal  │
+└──────────────────────────────────────┘
+```
+
+- **Tabs:** one per feed (emoji and name), in Settings' order; swiping or tapping a tab moves between them, and only the feed that settles on screen asks Stips. Tapping the bottom bar's Feeds again goes to the top and reloads; entering the tab after a while reads the feed again. A feed just added (from a link, a tag or a ready-made one) opens.
+- **The header:** segmented *New · Hot · Mixed* (the feed's order, kept); with *Hot*, chips *This week* · *This month*; the tags in up to two lines ("#a · #b · #c", tap → *Edit feed*); while tags load, "Reading the tags… 3 of 8" with a thin bar. ⋮ → *Edit feed*, *Share* (the link, through Android's sheet), *Delete* (confirms: "It's only on this phone…").
+- **The list:** the usual question rows, swipes and all; more load near the end, a tag at a time as needed; "That's everything" at the end. Empty: "No questions with these tags yet" (or "No unanswered questions with these tags right now"). Live: new questions slide in on top, as on Home.
+- **No feeds yet:** a card with the DynamicFeed icon, "Your own feeds", a line on what a feed is (up to 15 tags, newest, hottest or mixed, kept on this phone), *Create a feed* (filled), and **Ready-made feeds**: five cards (emoji, name, their tags) with *Add* (then *Added*).
+- **The editor** (a full-screen dialog, *New feed* / *Edit feed*, ✕ and *Save*): a row of emoji chips (the first is *None*), *Name* (30 characters), *Tags (3 of 15)* as input chips with ✕, a field "Add a tag" with + and Stips' suggestions as chips under it, *Order* as segmented *New · Hot · Mixed* with a line about the one picked (and the week or month chips for *Hot*), *Only unanswered questions* (a switch), *Leave out (0 of 15)* with its own field. *Save* needs a name and a tag.
+- **Adding a tag from anywhere:** a long press on a question's #tag, or the tag page's ≡+ button, opens a sheet *Add #tag to a feed*: your feeds, each with a checkbox ticked when it has the tag (a tap adds or takes it out; a feed keeps at least one; "Full: 15 tags" when it can't take more), and *New feed with #tag* (the editor, with the tag in it).
+- **A shared feed:** opening `www.shimshii.com/stips-plus/feed/…` in Stips+ shows a dialog *Add the feed "name"?*: "8 tags · New" in primary, its tags, "Leaves out …" when it does, *Add feed* / *Not now*; added, the Feeds tab opens on it. Without the app, the site's page shows the feed and links to the app.
 ### 5.8 Notifications
 
 ```

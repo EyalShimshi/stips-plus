@@ -2,6 +2,7 @@ package io.github.eyalshimshi.betterstips.util
 
 import io.github.eyalshimshi.betterstips.data.model.QuestionFocus
 import io.github.eyalshimshi.betterstips.data.model.StipsNotification
+import io.github.eyalshimshi.betterstips.data.model.TagFeed
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -44,8 +45,13 @@ object Links {
         questionId(link)?.let { return DeepLink.Question(it) }
         profileId(link)?.let { return DeepLink.Profile(it) }
         if (messagesLink.matches(link.trim())) return DeepLink.Messages
+        // A feed someone shared (#40): the website's link for it. Saving it gives it an id of its own.
+        TagFeedRules.fromShareLink(link, SHARED_FEED_ID)?.let { return DeepLink.Feed(it) }
         return null
     }
+
+    /** The id a shared feed carries until it's added. */
+    const val SHARED_FEED_ID = "shared"
 }
 
 /** A place in the app that a link, a phone notification or a launcher shortcut opens. */
@@ -68,6 +74,9 @@ sealed interface DeepLink {
 
     /** Text another app shared to Stips+ (v0.19): picking up to five chats to send it to. */
     data class SendTo(val text: String) : DeepLink
+
+    /** A feed someone shared (#40): Stips+ offers to add it. */
+    data class Feed(val feed: TagFeed) : DeepLink
 }
 
 /** Launcher shortcuts (`res/xml/shortcuts.xml`): each opens MainActivity with its own action. */

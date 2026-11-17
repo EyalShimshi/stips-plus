@@ -20,8 +20,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -64,6 +66,7 @@ import io.github.eyalshimshi.betterstips.data.model.FeedSort
 import io.github.eyalshimshi.betterstips.data.model.HotWindow
 import io.github.eyalshimshi.betterstips.data.model.MyList
 import io.github.eyalshimshi.betterstips.data.model.Question
+import io.github.eyalshimshi.betterstips.data.model.TagFeed
 import io.github.eyalshimshi.betterstips.ui.components.BackButton
 import io.github.eyalshimshi.betterstips.ui.components.ErrorCard
 import io.github.eyalshimshi.betterstips.ui.components.FooterNote
@@ -76,6 +79,7 @@ import io.github.eyalshimshi.betterstips.ui.components.appViewModel
 import io.github.eyalshimshi.betterstips.ui.components.channelLabel
 import io.github.eyalshimshi.betterstips.ui.components.listItemMotion
 import io.github.eyalshimshi.betterstips.ui.components.tonedColors
+import io.github.eyalshimshi.betterstips.ui.feeds.LocalAddTagToFeed
 
 @Composable
 fun QuestionList(
@@ -160,7 +164,10 @@ fun windowLabel(window: HotWindow): String = stringResource(
     },
 )
 
-/** New / Hot, channel chips (and Home's Unanswered, #37, with [showUnanswered]), and the hot window (SPEC-02 §5.1). */
+/**
+ * New / Hot, channel chips (and Home's Unanswered, #37, with [showUnanswered]; your feeds, #40, with [feeds]), and the
+ * hot window (SPEC-02 §5.1). A feed picked ([selectedFeedId]) is what's shown instead of a channel.
+ */
 @Composable
 fun FeedFilters(
     query: FeedQuery,
@@ -169,7 +176,11 @@ fun FeedFilters(
     onChange: (FeedQuery) -> Unit,
     showSort: Boolean = true,
     showUnanswered: Boolean = false,
+    feeds: List<TagFeed> = emptyList(),
+    selectedFeedId: String? = null,
+    onFeed: (TagFeed) -> Unit = {},
 ) {
+    val noFeed = selectedFeedId == null
     Column(
         Modifier
             .fillMaxWidth()
@@ -201,7 +212,7 @@ fun FeedFilters(
             ) {
                 item(key = "all") {
                     FilterChip(
-                        selected = query.channelName == null && !query.unanswered,
+                        selected = noFeed && query.channelName == null && !query.unanswered,
                         onClick = { onChange(query.copy(channelName = null, unanswered = false)) },
                         label = { Text(stringResource(R.string.channel_all)) },
                     )
@@ -209,12 +220,25 @@ fun FeedFilters(
                 // Stips+'s own category (#37), first after All; one category at a time, as the channels.
                 if (showUnanswered) {
                     item(key = "unanswered") {
-                        UnansweredChip(selected = query.unanswered) { onChange(query.copy(channelName = null, unanswered = true)) }
+                        UnansweredChip(selected = noFeed && query.unanswered) { onChange(query.copy(channelName = null, unanswered = true)) }
                     }
+                }
+                // Your feeds (#40), before Stips' own channels, when Settings → Feeds puts them here.
+                items(feeds, key = { "feed-" + it.id }) { feed ->
+                    FilterChip(
+                        selected = feed.id == selectedFeedId,
+                        onClick = { onFeed(feed) },
+                        label = { Text(feed.label, maxLines = 1) },
+                        leadingIcon = if (feed.emoji.isBlank()) {
+                            { Icon(Icons.Outlined.DynamicFeed, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                        } else {
+                            null
+                        },
+                    )
                 }
                 items(channels, key = { it.id }) { channel ->
                     FilterChip(
-                        selected = query.channelName == channel.name,
+                        selected = noFeed && query.channelName == channel.name,
                         onClick = { onChange(query.copy(channelName = channel.name, unanswered = false)) },
                         label = { Text(channelLabel(channel)) },
                         leadingIcon = { ChannelDot(channel) },
@@ -290,6 +314,13 @@ fun TopicScreen(topic: String, onBack: () -> Unit, onOpenQuestion: (Long) -> Uni
             TopAppBar(
                 title = { Text(stringResource(R.string.topic_title, topic), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { BackButton(onBack) },
+                actions = {
+                    // This tag in one of your feeds (#40).
+                    val addTagToFeed = LocalAddTagToFeed.current
+                    IconButton(onClick = { addTagToFeed(topic) }) {
+                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.feed_add_to))
+                    }
+                },
             )
         },
     ) { padding ->

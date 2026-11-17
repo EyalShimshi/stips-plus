@@ -11,6 +11,7 @@ import coil.memory.MemoryCache
 import io.github.eyalshimshi.betterstips.data.AnonymousAnswers
 import io.github.eyalshimshi.betterstips.data.Announcements
 import io.github.eyalshimshi.betterstips.data.AppUpdates
+import io.github.eyalshimshi.betterstips.data.TagFeedStore
 import io.github.eyalshimshi.betterstips.data.BlockStore
 import io.github.eyalshimshi.betterstips.data.ChannelsSource
 import io.github.eyalshimshi.betterstips.data.ChatReadMarks
@@ -138,6 +139,9 @@ class AppContainer(private val app: Application) {
 
     /** Chats pinned on top of Chats (#33), kept on this phone. */
     val pinnedChats = PinnedChats(app)
+
+    /** Your feeds (#40), kept on this phone. */
+    val tagFeeds = TagFeedStore(app)
 
     /** The "Hot right now" widget's list (D-51). */
     val hotWidget = HotWidgetFeed(app, repository, appScope)

@@ -51,7 +51,7 @@
 | Newest questions | `objectlist` | `{"method":"ask.new","page":1}` | `data`: array of 30 questions. An empty array means the end |
 | Hot questions | `objectlist` | `{"method":"ask.hot","page":1,"filter_section_name":"now"}` (`now` · `today` · `week`) | Same |
 | A channel | `objectlist` | `{"method":"ask.new","channel":"לימודים","page":1}`; hot adds `"filter_section_name":"week"` (`week` · `month`) | Same, all from that channel. **The channel is passed by its Hebrew name**, not its id |
-| A topic (tag) | `objectlist` | `{"method":"ask.new","topic":"מתמטיקה","page":1}`; hot as for channels | Same |
+| A topic (tag) | `objectlist` | `{"method":"ask.new","topic":"מתמטיקה","page":1}`; hot as for channels | Same. **One tag per request** (v0.23, measured): a list of tags makes the server fail, and tags joined by commas find nothing (§2.17) |
 | Pinned questions | `homepage.content` | — | `data.pinnedItems`: 5 questions |
 | The website's home sections | `feed.get` | `{"page":1,"random_order_number":1309,"feed_type":"userRelated","extra_time":false}` (`todayItems` when signed out, or when `userRelated` is empty) | `data.results`: sections `{elementType, name, title, items}`; about 11 on page 1. A `topic` section shows `name` and links to the topic; an `itemList` shows `title`. 1–5 questions each (§2.11) |
 | One question | `omniobj` | `rest_action=GET`, `omniobj={"objType":"ask","data":{"id":19745077}}` | `data.omniOmniObj`: one question |
@@ -97,7 +97,7 @@
 | A link's title | `smartdata.get` | `{"namespace":"utils","unit":"GetUrlMeta","url":…}` | `results.title` (may be empty); names the one link an answer can carry (`link1`, `link1name`) |
 | Safe mode | `user.update.settings` | `{"userid":…,"settings_name":"safeFilter","value":true}` | Stored on the account |
 | Bio | `omniobj` POST | `{"objType":"user_profile_page","data":{"userid","text_status"}}` with `api_params {"createIfNotExist":true}` | — |
-| Profile photo | multipart POST to `https://stips.co.il/scripts/upload/photo.asp?photo_type=profile_photo` (field `file`), then `profile.set_thumbnail` | `{"userid","x0","x1","y0","y1"}` (the crop square) | Upload answers `{success, error}`. The site adds `&flip=yes` / `&rotateR=yes` for camera photos; the app straightens the photo itself |
+| Profile photo | multipart POST to `https://stips.co.il/scripts/upload/photo.asp?photo_type=profile_photo` (field `file`), then `profile.set_thumbnail` | `{"userid","x0","x1","y0","y1"}` (the crop square) | Upload answers `{success, error}`, and `{"success":true}` even when it saved nothing (no session, v0.23): the photo's stamp tells. The square is measured on Stips' own 300 px-wide copy (`l`), not on the file sent (§2.17). The site adds `&flip=yes` / `&rotateR=yes` for camera photos; the app straightens the photo itself |
 
 Credibility bands on the site's gauge ("דירוג אמינות"): 0 red `#f50057`, 30 yellow `#FDD835`, 50 indigo `#3f51b5`, 80 green `#09c286`. Badge codes: `moderator` (נאמן/ת סטיפס), `senior_moderator` (נאמן/ה בכיר/ה), `old_expert` (מומחה/ית סטיפס), `senior_advisor` (עונה בכיר/ה), `custom_rank`.
 
@@ -276,6 +276,12 @@ A CI probe read 24 busy questions (26–151 answers each, 1,203 answers) and the
 - **Chat links:** a question link is `https://stips.co.il/ask/<id>` (a slug may follow), a profile link `https://stips.co.il/profile/<id>`; the site shows both as plain links in chats. Stips+'s cards (D-136) cost `omniobj GET ask` (nothing when a list showed the question) or `omniobj GET user` + `profile.page_data`, once per app session.
 - **GitHub (not Stips):** `GET https://api.github.com/repos/EyalShimshi/stips-plus/releases?per_page=10` lists pre-releases too (`/releases/latest` leaves them out), newest first, each with `tag_name` (`build-N`), `name` ("Stips+ 0.18.N"), `draft`, `html_url` and `assets[{name,size,browser_download_url,digest}]`; `digest` is "sha256:…". Without a token GitHub allows 60 calls an hour per address; Stips+ makes one a day (D-134).
 
+### 2.17 Tags, the profile photo and the app's own files (v0.23, measured 2026-11)
+
+- **Tags and channels:** channels are Stips' fixed list (§2.7); tags are free text, and `ask.new`/`ask.hot` take one as `topic` (hot: `week` or `month`). A list (`"topic":["a","b"]`) makes the server fail; `"a,b"` finds nothing; so a feed of several tags asks once per tag. `item.tag_suggest {q}` answers `data.tags` (about 5 that start with or contain `q`), public. Stips gets about 650 questions a day, about 22 pages of New; a tag's page holds 30 like any list.
+- **The profile photo:** `photo.asp` takes a JPEG or PNG in the field `file`; the session cookie or the `Login%5FUser` cookie must come with it, or it answers `{"success":true}` and keeps nothing. Stips keeps copies `t`, `a` and `l` (300 px wide) at `cdn.stips.co.il/photos/user_profile/{t|a|l}/<userid>/<stamp>.jpg`; a new upload changes `extra.photostamp` (and `data.photo_updated_stamp`). `profile.set_thumbnail {userid, x0, x1, y0, y1}` takes the avatar's square in the `l` copy's pixels, so a square photo sent at any size is `0–300 × 0–300`. Tried on the owner's account with his permission, and put back as it was.
+- **GitHub's releases (D-156):** test builds are pre-releases tagged `dev-N` ("Stips+ 0.23.N (test)"), releases `build-N`, marked "latest" (`/releases/latest` returns only that one). 0.18–0.22 read `releases?per_page=10` and know only `build-N`; 0.23 reads 20 and both. Each asset has `download_count`.
+- **Announcements (D-157):** `https://raw.githubusercontent.com/EyalShimshi/stips-plus/main/announcements.json`; GitHub's raw files are cached for up to 5 minutes. The format is in MAINTAINING.md.
 ## 3. Data model (in the app)
 
 ```kotlin
@@ -296,7 +302,10 @@ enum class Feed { New, Hot }   // with HotWindow: Now, Today, Week, Month
 data class AppUser(val id: Long, val points: Int?, val flowers: Int?, val safeFilter: Boolean, val female: Boolean, val moderator: String?, val ban: AccountBan?)
 data class AccountBan(val message: String?, val endsText: String?)   // temporary when endsText is set
 data class UnreadMark(val id: Long, val count: Int)                   // the "unread" bar above an answer or message
-```
+// v0.23: a feed of tags, kept on the phone (D-166)
+enum class FeedOrder { New, Hot, Mixed }
+data class TagFeed(val id: String, val name: String, val emoji: String, val tags: List<String>, val excluded: List<String>,
+                   val order: FeedOrder, val window: HotWindow /* Week or Month */, val unansweredOnly: Boolean)```
 
 - **The parser is tolerant:** a missing or mistyped field gets a safe default instead of failing the whole list. Ids may arrive as numbers or strings.
 - **Times** are parsed as `Asia/Jerusalem` local time and shown relative in the user's language ("5 min", "לפני 5 דק׳").

@@ -50,9 +50,10 @@ fun AttachedLink(url: String, title: String?, style: TextStyle, modifier: Modifi
     val host = remember(url) { Links.host(url) }
     var viewing by rememberSaveable(url) { mutableStateOf(false) }
     val failedLinks by LocalAppContainer.current.imageLinks.failed.collectAsStateWithLifecycle()
-    if (image != null && url !in failedLinks) {
+    // Open whatever the row turns into: the viewer itself marks a picture that can't be shown, and stays to say so.
+    if (viewing && image != null) ImageLinkViewer(image, onDismiss = { viewing = false })
+    if (image != null && image.link !in failedLinks) {
         ShowImageButton(onClick = { viewing = true }, modifier = modifier)
-        if (viewing) ImageLinkViewer(image, onDismiss = { viewing = false })
         return
     }
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {

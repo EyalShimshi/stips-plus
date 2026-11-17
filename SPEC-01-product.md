@@ -168,7 +168,17 @@ Stips+ is a fast, native Android app for reading and answering questions on [sti
 | F-114 | The vote you gave, clear (#35, v0.21) | P1 | The picked arrow is green or red on a tint, whatever the score |
 | F-115 | Missing pages say what's missing (#36, v0.21) | P1 | A user, a question, an answer or another page that doesn't exist is named as such |
 | F-116 | Unanswered questions (#37, v0.22) | P1 | A category on Home, first after All: the newest questions no one has answered yet; Live adds new ones |
-
+| F-117 | Copy an answer (#38, v0.23) | P1 | *Copy text* in an answer's ⋮ menu and as a swipe choice; *Select all* takes just that answer |
+| F-118 | "You" on your answers; detach anonymous ones (#39, v0.23) | P1 | Your answers say "You", anonymous ones too, and so do quotes of them; anonymous answers and questions can be detached, after which they aren't yours |
+| F-119 | Your feeds (#40, v0.23) | P1 | A Feeds tab: feeds of up to 15 tags each (New, Hot or Mixed; tags left out; unanswered only), read tag by tag as you scroll; ready-made ones; a long press on a #tag adds it; Settings → Feeds: on Home, Live, manage, share as a link |
+| F-120 | Test builds and releases (#41, v0.23) | P1 | Every change is a test build first, offered only to apps that ask for test builds; the owner releases one to everyone by hand |
+| F-121 | Announcements (#41, v0.23) | P1 | The owner can tell every Stips+ from 0.23 something: a pop-up once, and the latest in Settings → About |
+| F-122 | Download counts (#42, v0.23) | P2 | Stips+'s creator sees how often it was downloaded |
+| F-123 | Pictures from links (#43, v0.23) | P1 | A picture link is just *Show image*; the viewer copies and shares the picture, shares its link, opens the browser |
+| F-124 | New or topics, from any layout (#44, v0.23) | P1 | A *New \| Topics* switch under the hot questions; *Profile photo and bio* in Settings opens your profile |
+| F-125 | Share a question's link (#45, v0.23) | P2 | Sharing a question sends its link only |
+| F-126 | Change your profile photo (#46, v0.23) | P1 | Pick a photo, place it in a circle, save; the app checks that Stips kept it |
+| F-127 | The language switch keeps the direction (#47, v0.23) | P1 | Back to the phone's language, the app stays right-to-left in Hebrew |
 ## 7. Non-functional requirements
 
 | Area | Requirement |

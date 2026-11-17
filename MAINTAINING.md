@@ -5,11 +5,11 @@
 ## Release flow
 
 1. Push to `main` (the agent does it, or you push from your editor).
-2. GitHub Actions ([build.yml](.github/workflows/build.yml)) compiles and signs the APK, checks it ([tools/check_apk.py](tools/check_apk.py)), runs the unit tests, then opens it on an Android 15 emulator ([tools/launch_test.sh](tools/launch_test.sh)): over the newest earlier release that opens, as a fresh install (which must show the intro's first page, "Welcome"), a second time, and from each launcher shortcut. Then the release job waits for your approval (#14): GitHub notifies you, and in the GitHub app you open the run → *Review deployments* → *release* → *Approve and deploy*. Only then does it publish a pre-release `build-<run>` with `stipsplus-<run>.apk`. The release notes are [RELEASE-NOTES.md](RELEASE-NOTES.md) (update it every round) followed by the launch test's results.
-   - **One-time setup:** the first run creates the `release` environment. In the repository's Settings → Environments → **release** → *Required reviewers*, add yourself and save (optionally, *Deployment branches*: `main` only). Until then releases publish without waiting.
-3. A build takes about 15 minutes of runner time (free for a public repository): about 5 to build and test, 10 on the emulator. A hotfix you ask to rush can skip the emulator with `[skip launch]` in its commit message (build 30): the release still waits for your approval, and its notes and `status.md` say the launch test was skipped. Don't use it for changes to startup, libraries or R8's rules.
+2. GitHub Actions ([build.yml](.github/workflows/build.yml)) compiles and signs the APK, checks it ([tools/check_apk.py](tools/check_apk.py)), runs the unit tests, then opens it on an Android 15 emulator ([tools/launch_test.sh](tools/launch_test.sh)): over the newest earlier release that opens, as a fresh install (which must show the intro's first page, "Welcome"), a second time, and from each launcher shortcut. Then it publishes a **test build** (#41, D-156): a pre-release `dev-<run>` named "Stips+ <version> (test)", with `stipsplus-<run>.apk`, at once (no approval since v0.23). Only apps with Settings → About → *Test builds* on are offered it; everyone else gets a build when you **release** it (see "Test builds and releases" below). CI keeps only the newest 5 test builds. The release notes are [RELEASE-NOTES.md](RELEASE-NOTES.md) (update it every round) followed by the launch test's results.
+   - The `release` environment (Settings → Environments), which held releases for your approval in v0.14–v0.22, isn't used any more; you can delete it.
+3. A build takes about 15 minutes of runner time (free for a public repository): about 5 to build and test, 10 on the emulator. A hotfix you ask to rush can skip the emulator with `[skip launch]` in its commit message (build 30): the test build still publishes, and its notes and `status.md` say the launch test was skipped. Don't use it for changes to startup, libraries or R8's rules.
 4. Errors appear in a box on the run's **Summary** page, and in `status.md` on the `ci-status` branch. A failed launch test lists each step's verdict and the crash's stack trace; screenshots, logcats and the screen's text are in the run's `launch-test` artifact, kept only when the test fails (for 5 days): they show Stips' live posts, and a public repository's artifacts are public (#14). The summary that goes into release notes and `status.md` holds only verdicts and the app's own words.
-5. A red build is fixed before any new work. No pre-release is published for it.
+5. A red build is fixed before any new work. No test build is published for it.
 
 **Versions:** `versionCode` is the CI run number. `versionName` is `<major>.<minor>.<run>`; raise `versionMajorMinor` in [app/build.gradle.kts](app/build.gradle.kts) every round.
 
@@ -30,7 +30,7 @@ git fetch origin ci-status
 git --no-pager show origin/ci-status:status.md
 ```
 
-`status.md` holds the run number, commit, the result of each job (`build-and-tests`, `launch-test`; `release` says "waiting for approval" when both passed, or the launch test was skipped with `[skip launch]`, since the report doesn't wait for you), which key signed the APK (with its certificate digest), the APK size, and the error lines (build errors, the APK check, test failures, the launch test). It never contains secrets.
+`status.md` holds the run number, commit, the result of each job (`build-and-tests`, `launch-test`; `release` says "test build dev-<run>" when both passed, or the launch test was skipped with `[skip launch]`, else "skipped"), which key signed the APK (with its certificate digest), the APK size, and the error lines (build errors, the APK check, test failures, the launch test). It never contains secrets.
 
 ## The signing key
 
@@ -185,11 +185,11 @@ The log never contains request parameters, cookies, tokens or text the user wrot
 - **Flowers (D-128):** draw them with `FlowerIcon` ([StipsFlower.kt](app/src/main/java/io/github/eyalshimshi/betterstips/ui/components/StipsFlower.kt)), not `Icons.*.LocalFlorist`; its colors are `FlowerColors`.
 - **Bios (D-129):** [BioText.kt](app/src/main/java/io/github/eyalshimshi/betterstips/util/BioText.kt) reads the quote line as the site does; `BioPromo.BIO_MAX` is Stips' limit.
 - **Credit (D-132, D-142, D-143):** the creator's badge is an entry in `SpecialAccounts` with a `gradient` and `profileOnly`; `SpecialBadgePill` draws gradients as tinted pills. Profiles use `SpecialAccounts.badge`; anything by a name on content (answers, questions, chat cards) uses `contentBadge`, which leaves `profileOnly` badges out. The coffee link is `AppContainer.COFFEE_URL`.
-- **The app's page (#24, D-133, D-144):** it lives in the owner's site repository, [EyalShimshi.github.io](https://github.com/EyalShimshi/EyalShimshi.github.io), folder `stips-plus/` (`index.html`, `style.css`, `app.js`, `icon.svg`), served by GitHub Pages at www.shimshii.com/stips-plus; the site's root is the owner's portfolio. Change it there; a push to that repository publishes it, and this repository's builds don't touch it. `app.js` asks GitHub's API for the newest `build-N` release of this repository and links its APK; without an answer the button opens the Releases page. So keep the release names (see the next item) or change `app.js` with them. Its colors are the app's dark scheme from Stips green `#09C286`.
+- **The app's page (#24, D-133, D-144):** it lives in the owner's site repository, [EyalShimshi.github.io](https://github.com/EyalShimshi/EyalShimshi.github.io), folder `stips-plus/` (`index.html`, `style.css`, `app.js`, `icon.svg`), served by GitHub Pages at www.shimshii.com/stips-plus; the site's root is the owner's portfolio. Change it there; a push to that repository publishes it, and this repository's builds don't touch it. `app.js` asks GitHub's API for the release marked *latest* (since v0.23; then the newest `build-N` in the list) and links its APK, so test builds never reach the site; without an answer the button opens the Releases page. So keep the release names (see the next item) or change `app.js` with them. Its colors are the app's dark scheme from Stips green `#09C286`.
   - **DNS (done in v0.19):** Cloudflare, zone shimshii.com: `www` is a CNAME to `eyalshimshi.github.io` and the apex has GitHub Pages' four `A` (`185.199.108–111.153`) and four `AAAA` (`2606:50c0:8000–8003::153`) records, all **DNS only** (grey cloud); the mail records, `cinema` and the `mta-sts` ones are untouched.
   - **The certificate (D-147):** GitHub issues it only after its DNS check passes, and doesn't check again by itself. If HTTPS doesn't work an hour after a DNS change, remove the custom domain and add it back (Settings → Pages, or delete `CNAME` in one push and restore it in the next, once Pages has deployed).
   - **Owner, once:** in `EyalShimshi.github.io` → Settings → Pages, tick **Enforce HTTPS** (the certificate is there since v0.20). Optional but wise: your account's Settings → Pages → *Add a domain* → `shimshii.com`, with the `_github-pages-challenge-EyalShimshi` TXT record it shows, so no one else can claim the domain on GitHub.
-- **Updates inside the app (#25, D-134, D-145):** [UpdateRules.kt](app/src/main/java/io/github/eyalshimshi/betterstips/util/UpdateRules.kt) (pure) and [AppUpdates.kt](app/src/main/java/io/github/eyalshimshi/betterstips/data/AppUpdates.kt). They rely on the workflow's names: tags `build-<run>`, the file `stipsplus-<run>.apk`, the release's name "Stips+ <version>", and `versionCode` = the run number; change them together. *Update* opens `UpdateRules.downloadUrl` in the browser. **Don't bring back downloading or installing inside the app:** with `REQUEST_INSTALL_PACKAGES`, a `FileProvider` and an APK download (builds 31–32), Play Protect called Stips+ harmful. `RulesV20Test` and CI's *Check the permissions* fail if any of it returns. **For Google Play:** set `UpdateRules.SELF_UPDATE = false`, since Play doesn't allow apps to update themselves.
+- **Updates inside the app (#25, D-134, D-145):** [UpdateRules.kt](app/src/main/java/io/github/eyalshimshi/betterstips/util/UpdateRules.kt) (pure) and [AppUpdates.kt](app/src/main/java/io/github/eyalshimshi/betterstips/data/AppUpdates.kt). They rely on the workflows' names: tags `build-<run>` (releases) and `dev-<run>` (test builds, v0.23), the file `stipsplus-<run>.apk`, the release's name "Stips+ <version>" (" (test)" after it for test builds), and `versionCode` = the run number; change them together, and remember that 0.18–0.22 know only `build-<run>` and read only the newest 10 releases. *Update* opens `UpdateRules.downloadUrl` in the browser. **Don't bring back downloading or installing inside the app:** with `REQUEST_INSTALL_PACKAGES`, a `FileProvider` for the downloaded APK and an APK download (builds 31–32), Play Protect called Stips+ harmful. `RulesV20Test` and CI's *Check the permissions* fail if any of it returns. (The `FileProvider` v0.23 brought back shares pictures only, from `cache/shared/`; `RulesV20Test` keeps it to that folder.) **For Google Play:** set `UpdateRules.SELF_UPDATE = false`, since Play doesn't allow apps to update themselves.
 - **Play Protect (D-145):** if it calls a build harmful again, first check what that build added (`git diff build-<old>..build-<new> -- app/src/main/AndroidManifest.xml`; CI's report lists the APK's permissions). To ask Google to review a verdict: upload the APK to [VirusTotal](https://www.virustotal.com), copy its SHA-256, and fill in the [Play Protect appeal form](https://support.google.com/googleplay/android-developer/contact/protectappeals) with the package name `io.github.eyalshimshi.betterstips`, the hash, and a short explanation (open source, the repository's link, what changed). Google doesn't reply; a cleared app just stops being flagged.
 - **Backups and the intro (D-148):** backups carry the settings, never the session, the anonymous answers or the chats widget's copy (keep the three in [backup_rules.xml](app/src/main/res/xml/backup_rules.xml) and both sections of [data_extraction_rules.xml](app/src/main/res/xml/data_extraction_rules.xml); `RulesV20Test` checks them). Whether the intro was seen is `noBackupFilesDir/intro_seen` (AppRoot's `introSeen`), not a setting: anything in prefs comes back with a backup, and then a reinstall would skip the intro.
 - **Share to chats and a message's menu (D-139, D-140):** [ShareActivity.kt](app/src/main/java/io/github/eyalshimshi/betterstips/ShareActivity.kt) takes shared text (the manifest offers Stips+ for `text/plain` only) and starts `MainActivity` with `ShareActivity.ACTION_SEND_TO_CHATS`, which becomes `DeepLink.SendTo` and the route `Routes.sendTo(text)` ([SendToScreen.kt](app/src/main/java/io/github/eyalshimshi/betterstips/ui/chats/SendToScreen.kt)). A message's *Forward* opens the same route. The rules are [ShareRules.kt](app/src/main/java/io/github/eyalshimshi/betterstips/util/ShareRules.kt) (pure): `MAX_RECIPIENTS` is 5 on purpose, to keep sharing from being a way to spam; keep it a constant, not a setting. A bubble's menu is in `Bubble` (ChatsScreens.kt): its four items are also its accessibility actions, so change them together.
@@ -208,6 +208,65 @@ The log never contains request parameters, cookies, tokens or text the user wrot
 
 - **Unanswered (#37, D-155):** `FeedQuery.unanswered` asks for New (`ask.new`) and `FeedRules.shows` keeps the questions with `answer_count` 0, in `FeedViewModel` (loads, the cached first page, Live). A load looks up to `FeedRules.UNANSWERED_PAGES_PER_LOAD` pages (4) when a page holds none, then ends the list, so a quiet hour can't spend the request budget. If Stips ever adds its own list of unanswered questions, use it in `StipsRepository.feedPage` and drop the filter. The chip is `UnansweredChip` in FeedScreens.kt; Home hides the hot shelf and the website-like sections while it's picked.
 
+## Test builds, announcements, feeds and the profile photo (v0.23)
+
+### Test builds and releases (#41, D-156)
+
+- **A test build:** push to `main`. When CI passes, `dev-<run>` is on the Releases page within about 15 minutes. On your phone, Settings → About → **Test builds** on, and Stips+ offers each one (Home's card, or Settings → About → *Check now*). Installing a test build over a release (and back to a later release) works like any update: same key, higher number.
+- **A release to everyone:** in the GitHub app or site, Actions → **Release** → *Run workflow* → the build's number (empty: the newest test build) → *Run*. It takes a minute: it downloads that test build's APK and publishes the very same file again as `build-<run>`, "Stips+ <version>", marked **Latest**, on the test build's commit, with its notes. Every Stips+ (0.18 on) offers it within a day, and the site's button points to it. It refuses a number that isn't a test build (CI deletes all but the newest 5, so release one before 5 newer ones pile up), one that's already released, and one older than the newest release (apps only move to higher numbers).
+- **Why the newest 5:** 0.18–0.22 read only the newest 10 releases and take only `build-<run>`; with more test builds after it, the newest release would drop out of their sight. 0.23 reads 20, and takes `dev-<run>` only with *Test builds* on; between a test build and a release of the same number, it takes the release.
+- **A hotfix for everyone:** push it (with `[skip launch]` if you asked to rush), then run Release with its number as soon as `dev-<run>` is published.
+
+### Announcements (#41, D-157)
+
+Edit [announcements.json](announcements.json) on `main` (the GitHub app or site is fine): newest first. Every Stips+ from 0.23 reads it within 3 hours of coming to the screen, and shows each new announcement once, as a dialog; Settings → About → *Last announcement* shows the newest one again. Its check (**Announcements** in Actions) runs at once and fails, saying why, if the file is wrong; the apps keep the last good file meanwhile. Editing it builds nothing.
+
+```json
+{
+  "about": "…",
+  "announcements": [
+    {
+      "id": "2026-12-feeds",
+      "title": { "he": "פידים חדשים", "en": "New: feeds" },
+      "text": { "he": "אפשר ליצור פיד מתגיות…", "en": "You can now make a feed of tags…" },
+      "link": "https://www.shimshii.com/stips-plus/",
+      "linkText": { "he": "לפרטים", "en": "Details" },
+      "from": "2026-12-01",
+      "until": "2026-12-31",
+      "minBuild": 39,
+      "maxBuild": 60,
+      "channel": "all"
+    }
+  ]
+}
+```
+
+- Only `id` and `text` are needed. `id` is any short text, never reused (an app that showed it won't show it again). `title`, `text` and `linkText` are either one text for everyone or `{"he", "en"}` (one may be missing; the other shows instead).
+- `link` must start with `https://`; the button says `linkText`, or "Open". `from` and `until` are days, both included. `minBuild` and `maxBuild` are build numbers (an app's number is the last part of its version). `channel`: `all` (the default), `release` (apps without test builds) or `test` (apps with test builds on), handy to tell testers what to try.
+- To take one down, remove it; an empty list (`"announcements": []`) takes them all down. Keep new fields optional: older apps ignore what they don't know, and that's what keeps every version from 0.23 reading every later file.
+
+### Download counts (#42, D-158)
+
+Settings → About → *Downloads* shows, only when you're signed in as Stips+'s creator (`SpecialAccounts.CREATOR_ID`), the sum of GitHub's `download_count` for every `stipsplus-<run>.apk` in the newest 100 releases, and the newest release's own count. They include updates, and a few downloads by CI's launch test (it installs the previous release first); there's no count of people, and nothing in the app reports anything.
+
+### Feeds (#40, D-166)
+
+- Code: [TagFeedRules.kt](app/src/main/java/io/github/eyalshimshi/betterstips/util/TagFeedRules.kt) (pure: limits, cleaning, storage, merging, share links, the ready-made feeds), [TagFeedStore.kt](app/src/main/java/io/github/eyalshimshi/betterstips/data/TagFeedStore.kt) (prefs `tag_feeds`, part of backups), [TagFeedViewModel.kt](app/src/main/java/io/github/eyalshimshi/betterstips/ui/feeds/TagFeedViewModel.kt) and the rest of `ui/feeds/`. Stips takes one tag per request (`StipsRepository.feedPage` with a topic), so a feed is many requests: `TagFeedRules.MAX_TAGS` (15) is the owner's limit and `PARALLEL` (4) keeps a feed within `RateGuard`'s budget; keep both constants, not settings.
+- **The ready-made feeds** (`TagFeedRules.STARTERS`) use tags that Stips suggested (`item.tag_suggest`) when they were written; if Stips' tags drift, check them the same way and edit the list.
+- **Share links** are `https://www.shimshii.com/stips-plus/feed/?v=1&n=<name>&e=<emoji>&s=<order>&w=<window>&u=1&t=<tag>&t=…&x=<left out>`. A new field must be optional; a different meaning needs `v=2`, with the app still reading `v=1`.
+- **The site's part**, in the site repository: `stips-plus/feed/` (`index.html`, `feed.js`) shows a shared feed to someone without the app, and `.well-known/assetlinks.json` lets Android 12+ open those links in Stips+ without asking (`autoVerify`). It names the signing certificate's SHA-256 (`C0:11:8F:1A:…:52:1E:35:2C`, as in `status.md`'s `cert-sha256`); if the signing key ever changes, change it there too. To check: `https://www.shimshii.com/.well-known/assetlinks.json` must open as JSON, and on the phone, Settings → Apps → Stips+ → *Open by default* lists `www.shimshii.com` as verified.
+
+### The profile photo (#46, D-159)
+
+`StipsRepository.uploadProfilePhoto`: Stips' upload answers "success" even when it kept nothing (no session), so the app compares the photo's stamp (`extra.photostamp`) before and after, renews the session and tries once more. The avatar's square (`profile.set_thumbnail`) is measured on Stips' own copy, 300 px wide (`PhotoRules.LARGE_WIDTH`); if profile photos ever look shrunk or offset, measure `cdn.stips.co.il/photos/user_profile/l/<id>/<stamp>.jpg` again. A test on a real account changes its photo: keep the old one (the `l` copy and the square) to put it back.
+
+### Smaller ones
+
+- **Copy an answer (#38, D-161):** `AnswerSwipe.Copy`, in both swipe lists and the ⋮ menu; it copies `ReplyRefs.withoutReply` when the carets are hidden.
+- **"You" and detaching anonymous items (#39, D-162):** it follows `meta.permissions.itemOwner` (`answer.isOwner`), the same as the site's own detach button; after `item.set_anonymous` Stips no longer calls the item yours, so the answers (or the question) read again lose "You" and editing.
+- **Pictures (#43, D-160):** [ImageSharing.kt](app/src/main/java/io/github/eyalshimshi/betterstips/ui/components/ImageSharing.kt) copies the picture from Coil's disk cache to `cache/shared/` (older copies go after an hour) and shares it through the `FileProvider` `${applicationId}.files` ([shared_files.xml](app/src/main/res/xml/shared_files.xml)); never add another path to it. `ImageLinkResolver.failed` remembers links whose picture failed, which then show as links.
+- **The layout's direction (#47, D-165):** `MainActivity` provides `LocalLayoutDirection` from the language shown (`TextUtils.getLayoutDirectionFromLocale`), since Android's own report went stale after switching back to the phone's language. Keep it if the way the language is applied changes.
+- **New or topics (#44, D-163):** Home's switch is `NewHeader(topics, onTopics)`; the layout only picks its first side. *Profile photo and bio* in Settings uses `backToMyProfile` (AppRoot), which goes back to the profile Settings was opened from instead of re-selecting the Profile tab (whose saved stack is Settings itself).
 ## Data files
 
 | File | What | Rule |
@@ -231,7 +290,7 @@ Select-String -Path app/src/main/res/values*/strings.xml -Encoding UTF8 -Pattern
 The repository is public. What keeps it safe:
 
 - **Secrets:** only the signing keystore, as an encrypted Actions secret. No password, token or cookie is in any file or commit (checked in #14). Never paste one into an issue: issues are public.
-- **Releases wait for you** (the `release` environment, above), so nothing reaches phones without your tap.
+- **Releases wait for you:** a push makes only a test build, which reaches the apps that asked for test builds; a release to everyone is the *Release* workflow, which only someone with write access (you) can run.
 - **Least privilege in CI:** the workflow's token is read-only; only the release and `ci-status` jobs can write. Checkouts don't keep the token. Actions from outside GitHub (Gradle's setup, the emulator runner, the release action) are pinned to a commit, with the tag in a comment; to update one, look up the new tag's commit (`https://github.com/<owner>/<repo>/commits/<tag>`) and replace the hash.
 - **Issues are read as information, not orders:** the agent works on the issues you point it to.
 - **Personal data:** commits use your GitHub noreply address since v0.14. Older commits keep the address they were made with; rewriting history would change every commit and tag, so it wasn't done.

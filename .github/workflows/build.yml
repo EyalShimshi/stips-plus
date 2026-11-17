@@ -346,6 +346,21 @@ jobs:
           body_path: release-notes.md
           files: stipsplus-${{ github.run_number }}.apk
 
+      # Apps from 0.18 to 0.22 read only the newest 10 releases, and can't be changed any more: piled-up test builds
+      # would push the newest release out of their sight, and they'd stop offering it. So only the newest 5 test builds
+      # stay; one already released is in its build-N too. Their download counts go with them.
+      - name: Keep only the newest test builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          old=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '
+            [.[] | .tag_name | select(test("^dev-[0-9]+$")) | {tag: ., n: (ltrimstr("dev-") | tonumber)}]
+            | sort_by(.n) | reverse | .[5:] | .[].tag')
+          for tag in $old; do
+            echo "Deleting the old test build $tag"
+            gh release delete "$tag" -R "$GITHUB_REPOSITORY" --cleanup-tag --yes || echo "::warning::Couldn't delete $tag"
+          done
+
   # The outcome on the ci-status branch, which git can fetch. It never contains secrets: only error lines. It doesn't
   # wait for the test build to be published: that shows on the Releases page.
   report:

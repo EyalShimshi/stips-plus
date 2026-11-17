@@ -53,6 +53,18 @@
                 <data android:pathPrefix="/profile/" />
                 <data android:path="/messages" />
             </intent-filter>
+            <!--
+              A feed someone shared (v0.23, #40): its link is the website's page for it, which opens here instead.
+              Verified by the site's /.well-known/assetlinks.json, so Android opens it without asking.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="www.shimshii.com" />
+                <data android:pathPrefix="/stips-plus/feed" />
+            </intent-filter>
             <!-- Launcher shortcuts: Hot and Chats (D-57). -->
             <meta-data
                 android:name="android.app.shortcuts"
