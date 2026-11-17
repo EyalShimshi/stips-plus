@@ -1,10 +1,37 @@
+## Stips+ 0.24 (test build): feeds that open at once, any emoji, Undo, and your pins
+
+**Feeds open at once**
+- Why your test feed was slow: most tags answer in under half a second, but #גמירות makes Stips fail after about 15 seconds, every time (with the safe filter off), and #גמירה takes about 3.5 seconds. The feed waited for all of them, on every visit.
+- Now the phone keeps what every tag brought, the pages you scrolled too (up to 40 MB in the app's cache), and a feed shows it at once. Only the tags that are due are read again, behind it: busy tags every few minutes, quiet ones every few hours, and everything when you pull down.
+- A slow tag never holds a feed up. A tag Stips can't read is skipped, named on the feed, and tried again later.
+- New and Mixed use the same questions, so switching between them is instant; Hot loads once, then it's kept.
+- New questions that Home already loaded come into your feeds without asking Stips again.
+
+**Preloading**
+- While the app is open, your feeds are brought up to date in the background with requests to spare: a few seconds after it opens, then every five minutes, and as soon as you change a feed. So opening Feeds usually needs nothing at all.
+
+**Also**
+- Live in feeds is gone.
+- A feed's emoji can be any emoji: a picker by group, with your recent ones first.
+- Pinning or unpinning with a swipe, and turning a question's updates on or off, can be undone from the message (*Undo*, "ביטול").
+- A question you pinned shows its pin filled in your accent color: in lists, on Home's hot cards and on its page.
+
+**To test**
+1. Open your test feed, leave, and open it again: the second time it shows at once. #גמירות is named as one Stips can't read.
+2. Switch New → Mixed → New: no waiting. Hot takes a moment the first time only.
+3. Stay on Home for a minute, then open Feeds: it's already there.
+4. Edit a feed → the round emoji button → pick any emoji from the tabs; *No emoji* takes it off.
+5. Swipe a question to pin it → *Undo*: the pin fills, then empties.
+6. In a question, turn updates off → *Undo*.
+
+This test build also has everything from 0.23, which wasn't released to everyone yet:
 ## Stips+ 0.23 (test build): your feeds, test builds, announcements, the profile photo, and a lot of small things
 
 **Your feeds (#40)**
 - A new **Feeds** tab. Stips' categories are a fixed list, but every tag has its own questions: a feed brings up to 15 tags together into one list, **New** (newest first), **Hot** (this week or month, the most answered first) or **Mixed** (one from each tag in turn). It can leave tags out, and show only unanswered questions.
 - Swipe between your feeds. With none yet, the tab offers five ready-made ones (love and relationships, the army, driving and cars, money and work, school and exams), or *Create a feed*.
 - **Long-press any #tag** in a question (or the button on a tag's page) to add it to a feed, or to start one with it.
-- **Settings → Feeds:** your feeds on Home as chips (after *Unanswered*), Live in feeds, order, edit, delete, and **share a feed as a link**: on Android 12 and newer it opens straight in Stips+, which offers to add it; without the app, the site shows the feed.
+- **Settings → Feeds:** your feeds on Home as chips (after *Unanswered*), order, edit, delete, and **share a feed as a link**: on Android 12 and newer it opens straight in Stips+, which offers to add it; without the app, the site shows the feed.
 - Feeds live on your phone (backed up with the settings). A feed asks Stips tag by tag, 4 at a time, only while it's on screen, and more as you scroll.
 
 **Test builds and releases (#41)**

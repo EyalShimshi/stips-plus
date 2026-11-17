@@ -12,6 +12,8 @@ import io.github.eyalshimshi.betterstips.data.AnonymousAnswers
 import io.github.eyalshimshi.betterstips.data.Announcements
 import io.github.eyalshimshi.betterstips.data.AppUpdates
 import io.github.eyalshimshi.betterstips.data.TagFeedStore
+import io.github.eyalshimshi.betterstips.data.TagLists
+import io.github.eyalshimshi.betterstips.data.FeedWarmer
 import io.github.eyalshimshi.betterstips.data.BlockStore
 import io.github.eyalshimshi.betterstips.data.ChannelsSource
 import io.github.eyalshimshi.betterstips.data.ChatReadMarks
@@ -143,6 +145,12 @@ class AppContainer(private val app: Application) {
     /** Your feeds (#40), kept on this phone. */
     val tagFeeds = TagFeedStore(app)
 
+    /** Each tag's lists from Stips, shared by every feed (v0.24): in memory and the app's cache folder. */
+    val tagLists = TagLists(repository, session, File(app.cacheDir, "tag_lists"), appScope)
+
+    /** Brings your feeds' lists up to date while the app is on screen, with requests to spare (v0.24). */
+    val feedWarmer = FeedWarmer(tagFeeds, tagLists, appScope)
+
     /** The "Hot right now" widget's list (D-51). */
     val hotWidget = HotWidgetFeed(app, repository, appScope)
 
@@ -161,7 +169,11 @@ class AppContainer(private val app: Application) {
         // Read on first use (a chat with a :code: in it), or early by warmUp(); a file in the app, not a request (#22).
         StipsEmoji.source { app.assets.open(StipsEmoji.ASSET).bufferedReader().useLines { StipsEmoji.parse(it) } }
         watchNetwork()
-        repository.onFirstPage = { query, list -> if (query == HotWidgetFeed.QUERY) hotWidget.publish(list) }
+        repository.onFirstPage = { query, list ->
+            if (query == HotWidgetFeed.QUERY) hotWidget.publish(list)
+            // Home's newest questions reach the feeds' lists too, without asking Stips again (v0.24).
+            tagLists.absorb(query, list)
+        }
         // Stips refused a call because the account is blocked: read why, and show the block screen again (v0.13).
         api.onBanned = { write -> appScope.launch { session.onBanned(write) } }
         session.onSignedOut = ::forgetAccountData
@@ -179,6 +191,8 @@ class AppContainer(private val app: Application) {
         chatReadMarks.clear()
         replyTargets.clear()
         seenNotifications.clear()
+        // The feeds' kept lists carry the account's pins and safe filter (v0.24).
+        tagLists.clear()
     }
 
     private val warmedUp = AtomicBoolean(false)

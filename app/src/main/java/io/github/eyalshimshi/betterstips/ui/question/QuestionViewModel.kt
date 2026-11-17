@@ -213,14 +213,15 @@ class QuestionViewModel(
         }
     }
 
-    fun toggleFollow() {
+    /** Turns updates on or off; [announce] says so (Cancel turns them back without another message, v0.24). */
+    fun toggleFollow(announce: Boolean = true) {
         val follow = _state.value.following != true
         val before = _state.value.following
         _state.update { it.copy(following = follow) }
         viewModelScope.launch {
             try {
                 repository.setFollowing(questionId, follow)
-                _state.update { it.copy(message = if (follow) QuestionMessage.Following else QuestionMessage.NotFollowing) }
+                if (announce) _state.update { it.copy(message = if (follow) QuestionMessage.Following else QuestionMessage.NotFollowing) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

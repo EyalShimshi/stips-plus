@@ -91,13 +91,18 @@ class MainActivity : ComponentActivity() {
         // On screen, the app's own counts are fresh: phone notification checks wait (v0.11). Coming back also makes
         // sure they're still scheduled.
         Notifier.appVisible = true
-        Notifier.sync(applicationContext, (application as StipsApp).container.settings.settings.value)
+        val container = (application as StipsApp).container
+        Notifier.sync(applicationContext, container.settings.settings.value)
+        // Your feeds' lists are brought up to date while the app is on screen (v0.24).
+        container.feedWarmer.start()
     }
 
     override fun onStop() {
         Notifier.appVisible = false
+        val container = (application as StipsApp).container
+        container.feedWarmer.stop()
         // The first check after leaving comes a few minutes later.
-        Notifier.sync(applicationContext, (application as StipsApp).container.settings.settings.value)
+        Notifier.sync(applicationContext, container.settings.settings.value)
         super.onStop()
     }
 

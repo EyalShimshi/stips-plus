@@ -32,6 +32,9 @@ import io.github.eyalshimshi.betterstips.data.parse.Parsers
 import io.github.eyalshimshi.betterstips.util.PhotoRules
 import io.github.eyalshimshi.betterstips.util.StipsTime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
@@ -94,7 +97,24 @@ class StipsRepository(
     @Volatile
     var onFirstPage: ((FeedQuery, List<Question>) -> Unit)? = null
 
-    suspend fun feedPage(query: FeedQuery, page: Int): List<Question> {
+    private val _pins = MutableSharedFlow<Pair<Long, Boolean>>(extraBufferCapacity = 16)
+
+    /**
+     * Pins the user changed, from any screen (v0.24): lists show a question's filled pin at once, and the feeds' kept
+     * copies follow.
+     */
+    val pins: SharedFlow<Pair<Long, Boolean>> = _pins.asSharedFlow()
+
+    /**
+     * Questions a screen shows from what the phone kept (the feeds' cache, v0.24): opening one shows it at once. Only
+     * where nothing's cached yet, so a fresher copy stays, and as not fresh, so opening it still asks Stips.
+     */
+    fun keepShown(list: List<Question>) = synchronized(questionCache) {
+        list.forEach { if (questionCache[it.id] == null) questionCache[it.id] = it }
+    }
+
+    /** [keepFirstPage]: save a first page for the next launch, as lists do; the feeds' cache keeps its own (v0.24). */
+    suspend fun feedPage(query: FeedQuery, page: Int, keepFirstPage: Boolean = true): List<Question> {
         val myList = query.myList
         val params = buildJsonObject {
             when {
@@ -119,7 +139,7 @@ class StipsRepository(
         val list = Parsers.questions(data)
         timings.record(Timings.FEED, elapsedMs(started))
         remember(list)
-        if (page == 1 && myList == null && list.isNotEmpty()) {
+        if (page == 1 && myList == null && list.isNotEmpty() && keepFirstPage) {
             withContext(Dispatchers.IO) { runCatching { feedCache.write(query.cacheKey, data.toString()) } }
         }
         if (page == 1 && myList == null) onFirstPage?.invoke(query, list)
@@ -274,6 +294,7 @@ class StipsRepository(
                 },
             )
         }
+        _pins.tryEmit(questionId to pinned)
     }
 
     /** Whether the user gets updates on a question. */

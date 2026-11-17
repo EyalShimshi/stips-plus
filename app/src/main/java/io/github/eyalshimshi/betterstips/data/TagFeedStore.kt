@@ -2,6 +2,7 @@ package io.github.eyalshimshi.betterstips.data
 
 import android.content.Context
 import io.github.eyalshimshi.betterstips.data.model.TagFeed
+import io.github.eyalshimshi.betterstips.util.EmojiCatalog
 import io.github.eyalshimshi.betterstips.util.TagFeedRules
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,7 +70,16 @@ class TagFeedStore(context: Context) {
         prefs.edit().putString(KEY, TagFeedRules.toJson(list)).apply()
     }
 
+    /** Emoji picked for feeds lately, newest first (v0.24): the emoji picker's first tab. */
+    fun recentEmoji(): List<String> = prefs.getString(KEY_RECENT_EMOJI, null)?.split(' ')?.filter { it.isNotBlank() }.orEmpty()
+
+    fun usedEmoji(emoji: String) {
+        val picked = TagFeedRules.cleanEmoji(emoji).takeIf { it.isNotEmpty() } ?: return
+        prefs.edit().putString(KEY_RECENT_EMOJI, EmojiCatalog.recent(picked, recentEmoji()).joinToString(" ")).apply()
+    }
+
     private companion object {
         const val KEY = "feeds"
+        const val KEY_RECENT_EMOJI = "recent_emoji"
     }
 }

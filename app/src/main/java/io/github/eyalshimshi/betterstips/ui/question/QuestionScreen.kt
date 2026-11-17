@@ -348,6 +348,14 @@ fun QuestionScreen(
                     // Also when another message or leaving the screen cuts this one short: the hide then stays.
                     vm.settleHide(undo)
                 }
+            } else if (message == QuestionMessage.Following || message == QuestionMessage.NotFollowing) {
+                // Cancel (v0.24): the updates back as they were.
+                val undo = snackbar.showSnackbar(
+                    texts[message].orEmpty(),
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                ) == SnackbarResult.ActionPerformed
+                if (undo) vm.toggleFollow(announce = false)
             } else {
                 snackbar.showSnackbar(texts[message].orEmpty())
             }
@@ -951,6 +959,7 @@ private fun QuestionContent(
                             channel = channel,
                             answerCount = maxOf(question.answerCount, state.answers.size),
                             pinCount = state.pinCount,
+                            pinned = state.pinned,
                             collapse = collapse,
                             onOpenTopic = onOpenTopic,
                             modifier = Modifier.onSizeChanged { onHeroHeight(it.height) },
@@ -1168,6 +1177,7 @@ private fun QuestionHero(
     channel: Channel?,
     answerCount: Int,
     pinCount: Int,
+    pinned: Boolean,
     collapse: Float,
     onOpenTopic: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -1238,6 +1248,7 @@ private fun QuestionHero(
                 avatarSize = 22.dp,
                 clickableAuthor = true,
                 special = askerSpecial,
+                pinned = pinned,
             )
             if (question.topics.isNotEmpty() || channel != null) {
                 Row(

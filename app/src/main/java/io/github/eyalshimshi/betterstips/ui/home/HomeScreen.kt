@@ -64,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -86,7 +87,6 @@ import io.github.eyalshimshi.betterstips.data.api.ApiException
 import io.github.eyalshimshi.betterstips.data.api.RateGuard
 import io.github.eyalshimshi.betterstips.data.model.Channel
 import io.github.eyalshimshi.betterstips.data.model.FeedQuery
-import io.github.eyalshimshi.betterstips.data.model.FeedOrder
 import io.github.eyalshimshi.betterstips.data.model.FeedSort
 import io.github.eyalshimshi.betterstips.data.model.HotWindow
 import io.github.eyalshimshi.betterstips.data.model.Question
@@ -222,7 +222,7 @@ fun HomeScreen(
     val tagFeeds by container.tagFeeds.feeds.collectAsStateWithLifecycle()
     var homeFeedId by rememberSaveable { mutableStateOf<String?>(null) }
     val homeFeed = if (settings.feedChipsOnHome && settings.showChannelChips) tagFeeds.firstOrNull { it.id == homeFeedId } else null
-    val homeFeedVm = homeFeed?.let { feed -> appViewModel(key = "home-feed-" + feed.id) { TagFeedViewModel(it.repository, feed) } }
+    val homeFeedVm = homeFeed?.let { feed -> appViewModel(key = "home-feed-" + feed.id) { TagFeedViewModel(it.tagLists, it.repository, feed) } }
     val canSwitch = homeFeed == null && query.channelName == null && !query.unanswered
     var topicsPicked by rememberSaveable(layout) { mutableStateOf(layout == HomeLayout.LikeWebsite) }
     val showsSections = canSwitch && topicsPicked
@@ -244,7 +244,7 @@ fun HomeScreen(
     // questions again, and new questions on top of the list as Live adds them, so what you were reading stays put.
     RefreshOnEnter(Routes.HOME) {
         if (homeFeedVm != null) {
-            if (homeFeedVm.isStale()) homeFeedVm.refresh()
+            homeFeedVm.onEnter()
             return@RefreshOnEnter
         }
         if (showsHot) hotVm.refreshIfStale(query.channelName, settings.hotWindow)
@@ -266,21 +266,10 @@ fun HomeScreen(
             homeFeedVm.ensureLoaded()
         }
     }
-    // Live in a feed (#40), as in the Feeds tab: one of its tags at a time, newest-first feeds only.
-    LaunchedEffect(homeFeed?.id, homeFeed?.order, settings.feedsLive, settings.liveIntervalSeconds) {
+    // A feed on Home takes in newer lists only while Home's top is on screen (v0.24), as in the Feeds tab.
+    LaunchedEffect(homeFeedVm, listState) {
         val vm = homeFeedVm ?: return@LaunchedEffect
-        if (!settings.feedsLive || homeFeed?.order != FeedOrder.New) return@LaunchedEffect
-        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            var misses = 0
-            while (true) {
-                delay(AppSettings.liveDelayMs(settings.liveIntervalSeconds, misses))
-                if (!RateGuard.allowBackground()) continue
-                val atTop = listState.firstVisibleItemIndex <= 3
-                val added = vm.pollOne()
-                misses = if (added < 0) misses + 1 else 0
-                if (added > 0 && atTop) listState.animateScrollToItem(0)
-            }
-        }
+        snapshotFlow { listState.firstVisibleItemIndex == 0 }.collect { vm.setAtTop(it) }
     }
     LaunchedEffect(showsSections) { if (showsSections) sectionsVm.ensureLoaded() }
     LaunchedEffect(query.channelName, showsHot, settings.hotWindow) {
@@ -610,6 +599,10 @@ private fun HotCard(question: Question, rank: Int, seed: Int?, onClick: () -> Un
     val tinted = withImage || seed != null
     val plain = if (seed != null) Color(seed) else MaterialTheme.colorScheme.primaryContainer
     val textColor = if (tinted) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+    // Pinned by you (v0.24): a filled pin in the accent, light enough to show on the dark fade.
+    val pinned = LocalQuestionActions.current?.isPinned(question) ?: question.userPinned
+    val pinCount = (question.pinCount + if (pinned == question.userPinned) 0 else if (pinned) 1 else -1).coerceAtLeast(0)
+    val accent = MaterialTheme.colorScheme.primary.let { if (tinted && it.luminance() < 0.4f) MaterialTheme.colorScheme.inversePrimary else it }
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
@@ -668,7 +661,7 @@ private fun HotCard(question: Question, rank: Int, seed: Int?, onClick: () -> Un
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(6.dp))
-                QuestionMetaRow(question, color = textColor.copy(alpha = 0.9f))
+                QuestionMetaRow(question, color = textColor.copy(alpha = 0.9f), pinCount = pinCount, pinned = pinned, pinnedTint = accent)
             }
         }
     }

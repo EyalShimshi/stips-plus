@@ -34,8 +34,8 @@ object TagFeedRules {
     const val MAX_TAG = 40
     const val MAX_FEEDS = 30
 
-    /** How many tags are asked at the same time, within the request budget (RateGuard). */
-    const val PARALLEL = 4
+    /** How many tags' pages are asked at the same time (TagLists, for all feeds and the preloading together). */
+    const val PARALLEL = 6
 
     /** When a load added fewer than this (filters can leave little), the next pages are asked at once. */
     const val MIN_NEW_ITEMS = 8
@@ -55,12 +55,35 @@ object TagFeedRules {
 
     fun cleanName(raw: String): String = raw.replace(Regex("\\s+"), " ").trim().take(MAX_NAME)
 
-    /** At most a few characters, never half of one (emoji take two). */
+    /**
+     * One emoji, whole, never half of one (v0.24: the picker offers any): its variation selector, skin tone, joined
+     * parts (👨‍👩‍👧), keycap or flag pair stay with it; anything after it goes.
+     */
     fun cleanEmoji(raw: String): String {
         val text = raw.trim()
-        val end = if (text.codePointCount(0, text.length) > 4) text.offsetByCodePoints(0, 4) else text.length
+        if (text.isEmpty()) return ""
+        fun after(index: Int) = index + Character.charCount(text.codePointAt(index))
+        val first = text.codePointAt(0)
+        var end = after(0)
+        if (first in REGIONAL_INDICATORS) {
+            if (end < text.length && text.codePointAt(end) in REGIONAL_INDICATORS) end = after(end)
+            return text.substring(0, end)
+        }
+        var parts = 1
+        while (end < text.length && parts < MAX_EMOJI_PARTS) {
+            val next = text.codePointAt(end)
+            end = when {
+                next == 0xFE0F || next == 0xFE0E || next == 0x20E3 || next in 0x1F3FB..0x1F3FF || next in 0xE0020..0xE007F -> after(end)
+                next == 0x200D && after(end) < text.length -> after(after(end))
+                else -> break
+            }
+            parts++
+        }
         return text.substring(0, end)
     }
+
+    private val REGIONAL_INDICATORS = 0x1F1E6..0x1F1FF
+    private const val MAX_EMOJI_PARTS = 16
 
     /** A feed that can be saved: a name and at least one tag. */
     fun valid(feed: TagFeed): Boolean = feed.name.isNotBlank() && feed.tags.isNotEmpty()
@@ -126,6 +149,14 @@ object TagFeedRules {
     /** What a feed shows now, which tags to ask for their next page to show more, and whether there's no more at all. */
     data class Merge(val items: List<Question>, val more: List<String>, val ended: Boolean)
 
+    /**
+     * A list being read keeps still (v0.24) while the lists under it are brought up to date: New never shows less than
+     * down to [floor] (the oldest question on screen); Hot and Mixed leave out tags that came in after the list was
+     * laid out ([base] holds the ones it had, each with its newest question), and Mixed takes only up to that newest,
+     * so new questions wait for the top of the list, or the next visit.
+     */
+    data class Held(val floor: Long?, val base: Map<String, Long>)
+
     /** A question the feed keeps: none of its left-out tags, and unanswered when it asks for that. */
     fun accepts(feed: TagFeed, question: Question): Boolean {
         if (feed.unansweredOnly && question.answerCount > 0) return false
@@ -136,34 +167,43 @@ object TagFeedRules {
 
     /**
      * The feed's list from its tags' [streams], in the feed's order of tags. Each way only ever adds at the end as more
-     * pages come, so what's on screen stays put.
+     * pages come, so what's on screen stays put; [held] keeps it so while the lists are brought up to date.
      */
-    fun merge(feed: TagFeed, streams: List<Stream>): Merge = when (feed.order) {
-        FeedOrder.New -> mergeNew(feed, streams)
-        FeedOrder.Hot -> mergeHot(feed, streams)
-        FeedOrder.Mixed -> mergeMixed(feed, streams)
+    fun merge(feed: TagFeed, streams: List<Stream>, held: Held? = null): Merge {
+        if (held == null) {
+            return when (feed.order) {
+                FeedOrder.New -> mergeNew(feed, streams, null)
+                FeedOrder.Hot -> mergeHot(feed, streams)
+                FeedOrder.Mixed -> mergeMixed(feed, streams)
+            }
+        }
+        if (feed.order == FeedOrder.New) return mergeNew(feed, streams, held.floor)
+        // Hot and Mixed: a tag that came in after the list was laid out waits for its top, or the next visit.
+        val laidOut = streams.map { stream -> if (stream.tag in held.base) stream else Stream(stream.tag, ended = true) }
+        if (feed.order == FeedOrder.Hot) return mergeHot(feed, laidOut)
+        return mergeMixed(
+            feed,
+            laidOut.map { stream ->
+                val base = held.base[stream.tag] ?: return@map stream
+                stream.copy(pages = stream.pages.map { page -> page.filter { it.id <= base } })
+            },
+        )
     }
 
     /**
-     * A tag whose next page couldn't be read (offline, a timeout, Stips' error). Its first page: the tag is set aside
-     * until the feed is read again from the top, so the other tags still show. A later page: the tag stays as it was,
-     * open, since going on without it would skip its questions (or end the feed); that load stops there, and the next
-     * one asks it again.
-     */
-    fun afterFailedRead(stream: Stream): Stream = if (stream.pages.isEmpty()) stream.copy(ended = true) else stream
-
-    /**
      * Newest first. A tag's next page can hold questions newer than another tag's oldest so far, so only questions at
-     * least as new as every open tag's oldest one show (the frontier); the tags holding it back are asked next.
+     * least as new as every open tag's oldest one show (the frontier), or down to [floor] when that's further; the
+     * tags holding the frontier back are asked next.
      */
-    private fun mergeNew(feed: TagFeed, streams: List<Stream>): Merge {
+    private fun mergeNew(feed: TagFeed, streams: List<Stream>, floor: Long?): Merge {
         val open = streams.filter { !it.ended }
         val waiting = open.filter { it.pages.isEmpty() }
         if (waiting.isNotEmpty()) return Merge(emptyList(), waiting.map { it.tag }, ended = false)
         val oldest = open.associate { s -> s.tag to (s.items.minOfOrNull { it.id } ?: Long.MAX_VALUE) }
         val frontier = oldest.values.maxOrNull()
+        val down = if (frontier == null || floor == null) frontier else minOf(frontier, floor)
         val items = streams.flatMap { it.items }.distinctBy { it.id }
-            .filter { (frontier == null || it.id >= frontier) && accepts(feed, it) }
+            .filter { (down == null || it.id >= down) && accepts(feed, it) }
             .sortedByDescending { it.id }
         val more = if (frontier == null) emptyList() else open.filter { oldest[it.tag] == frontier }.map { it.tag }
         return Merge(items, more, ended = open.isEmpty())

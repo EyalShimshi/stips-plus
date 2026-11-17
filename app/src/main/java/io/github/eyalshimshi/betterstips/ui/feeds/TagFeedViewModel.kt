@@ -3,34 +3,38 @@ package io.github.eyalshimshi.betterstips.ui.feeds
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.eyalshimshi.betterstips.data.StipsRepository
+import io.github.eyalshimshi.betterstips.data.TagLists
 import io.github.eyalshimshi.betterstips.data.api.ApiException
-import io.github.eyalshimshi.betterstips.data.model.FeedOrder
-import io.github.eyalshimshi.betterstips.data.model.FeedQuery
-import io.github.eyalshimshi.betterstips.data.model.FeedSort
 import io.github.eyalshimshi.betterstips.data.model.TagFeed
 import io.github.eyalshimshi.betterstips.ui.components.asApiException
 import io.github.eyalshimshi.betterstips.ui.feed.FeedUiState
-import io.github.eyalshimshi.betterstips.util.AutoRefresh
 import io.github.eyalshimshi.betterstips.util.TagFeedRules
+import io.github.eyalshimshi.betterstips.util.TagListRules
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * One of your feeds (#40): each of its tags asked from Stips on its own (`ask.new` or `ask.hot` with `topic`, as the
- * site's tag pages), only once the feed is on screen ([ensureLoaded]), the next pages as it's scrolled, all made into
- * one list by [TagFeedRules.merge].
+ * One of your feeds (#40) from the feeds' cache (v0.24, D-167): what the phone kept shows at once, and only the lists
+ * due for it are read again, in the background. A tag that's slow, or that Stips fails on, is never waited for. What's
+ * on screen changes only when that doesn't move what's being read: opening the feed, its top, pulling it down, and the
+ * next page (which keeps the rest still). New and Mixed read the same lists, so switching between them asks nothing.
  */
-class TagFeedViewModel(private val repository: StipsRepository, initial: TagFeed) : ViewModel() {
+class TagFeedViewModel(
+    private val lists: TagLists,
+    private val repository: StipsRepository,
+    initial: TagFeed,
+) : ViewModel() {
     private var feed = initial
 
     private val _state = MutableStateFlow(FeedUiState(loading = true))
@@ -38,191 +42,352 @@ class TagFeedViewModel(private val repository: StipsRepository, initial: TagFeed
 
     private val _progress = MutableStateFlow<Pair<Int, Int>?>(null)
 
-    /** While a feed's tags are first asked: how many answered, of how many. */
+    /** While a feed with nothing kept is first read: how many tags answered, of how many. */
     val progress: StateFlow<Pair<Int, Int>?> = _progress.asStateFlow()
 
-    private var streams: List<TagFeedRules.Stream> = emptyList()
+    private val _unreadable = MutableStateFlow<List<String>>(emptyList())
+
+    /** Tags Stips failed on lately with nothing kept to show: the feed says so. */
+    val unreadable: StateFlow<List<String>> = _unreadable.asStateFlow()
+
+    /** Each tag's list as the screen shows it. */
+    private var shown: Map<String, TagListRules.Entry> = emptyMap()
+
+    /** The tags laid out, each with its newest question then (TagFeedRules.Held). */
+    private var base: Map<String, Long> = emptyMap()
+
+    /** Set while the list is being read past its layout: what's on screen keeps still. */
+    private var held: TagFeedRules.Held? = null
+
     private var job: Job? = null
+    private var settle: Job? = null
     private var started = false
-    private var pollNext = 0
-    private var pageOneAt = 0L
+    private var atTop = true
 
-    /** A tag's next page read into its stream, or why it couldn't be (the stream as it was, then). */
-    private class Read(val stream: TagFeedRules.Stream, val error: ApiException?)
+    /** The cache has newer lists than the screen: they come in at the top. */
+    private var waiting = false
+    private var generation = 0
 
-    /** The feed was edited: a different list starts over, a new name or emoji just shows. */
+    init {
+        viewModelScope.launch {
+            lists.changed.collect { key ->
+                if (key.kind == kind() && feed.tags.any { TagListRules.sameTag(it, key.tag) }) onListChanged()
+            }
+        }
+    }
+
+    private fun kind(): TagListRules.Kind = TagListRules.kindOf(feed.order, feed.window)
+
+    /** What the cache keeps for the feed's tags, by tag. */
+    private suspend fun kept(): Map<String, TagListRules.Entry> {
+        val kind = kind()
+        return lists.known(feed.tags.map { TagLists.Key(it, kind) }).mapKeys { it.key.tag }
+    }
+
+    /** The feed was edited, or its order changed: the other list comes from what's kept; only new tags are asked. */
     fun update(next: TagFeed) {
         val changed = next.listKey != feed.listKey
         feed = next
-        if (changed && started) load(reset = true, refreshing = false)
+        if (changed && started) open()
     }
 
-    /** Loads the feed unless it already did (or is). */
+    /** Shows the feed unless it already did (or is). */
     fun ensureLoaded() {
-        if (!started) load(reset = true, refreshing = false)
+        if (!started) open()
     }
 
-    fun refresh() = load(reset = true, refreshing = true)
+    /** The feed came on screen again (the tab, the app, its page): what came meanwhile, and the lists due. */
+    fun onEnter() {
+        if (!started) {
+            open()
+            return
+        }
+        if (atTop && job?.isActive != true) adoptLatest()
+        refreshDue()
+    }
+
+    /** Pulling down, or tapping the tab again: every list's top read again, except those Stips fails on. */
+    fun refresh() {
+        job?.cancel()
+        started = true
+        val gen = ++generation
+        _state.update { it.copy(refreshing = true, loadingMore = false, error = null) }
+        job = viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                val before = kept()
+                val tags = feed.tags.filter { !TagListRules.unavailable(before[it], now) }
+                val tops = readTops(tags, PULL_WAIT_MS, gen, showProgress = false, needOne = false)
+                if (tops.read == 0 && tops.errors.isNotEmpty() && _state.value.items.isNotEmpty()) {
+                    // Not one list could be read: what's on screen stays, with the error.
+                    _state.update { it.copy(refreshing = false, error = tops.errors.last()) }
+                    return@launch
+                }
+                layOut(kept(), error = if (tops.read == 0) tops.errors.lastOrNull() else null, swapped = true)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failed(e)
+            }
+        }
+    }
 
     fun retry() {
-        if (_state.value.items.isEmpty()) load(reset = true, refreshing = false) else loadMore(force = true)
+        if (_state.value.items.isEmpty()) open(force = true) else loadMore(force = true)
+    }
+
+    /** Whether the list's top is on screen: the cache's newer lists come in only then. */
+    fun setAtTop(value: Boolean) {
+        atTop = value
+        if (value && waiting && job?.isActive != true) adoptLatest()
+    }
+
+    /**
+     * Lays the feed out from what's kept, at once. Tags never read are asked first, waiting a moment for them (with
+     * nothing to show, for the first that answers); slower ones come in later. Then the lists due, in the background.
+     */
+    private fun open(force: Boolean = false) {
+        job?.cancel()
+        started = true
+        val gen = ++generation
+        job = viewModelScope.launch {
+            try {
+                var kept = kept()
+                val now = System.currentTimeMillis()
+                val missing = feed.tags.filter { tag ->
+                    kept[tag]?.read != true && (force || !TagListRules.unavailable(kept[tag], now))
+                }
+                var errors = emptyList<ApiException>()
+                if (missing.isNotEmpty()) {
+                    val anything = kept.values.any { it.items.isNotEmpty() }
+                    if (!anything) _state.update { it.copy(loading = true, error = null, endReached = false, items = emptyList()) }
+                    val tops = readTops(missing, if (anything) SOFT_WAIT_MS else FIRST_WAIT_MS, gen, showProgress = !anything, needOne = !anything)
+                    errors = tops.errors
+                    kept = kept()
+                }
+                // Nothing to show: why (a read's error, or tags Stips fails on), with Retry, rather than "no questions".
+                val nothing = kept.values.none { it.read }
+                val error = when {
+                    !nothing -> null
+                    errors.isNotEmpty() -> errors.last()
+                    feed.tags.any { TagListRules.unavailable(kept[it], now) } -> ApiException(ApiException.SERVER)
+                    else -> null
+                }
+                val merge = layOut(kept, error = error, swapped = true)
+                // Filters (left-out tags, unanswered only) can leave little: a few pages more at once.
+                if (merge.items.size < TagFeedRules.MIN_NEW_ITEMS && merge.more.isNotEmpty() && kept.values.any { it.read }) {
+                    _state.update { it.copy(loadingMore = true) }
+                    val failure = more(merge.items.size)
+                    publish(error = failure)
+                }
+                refreshDue(skip = missing)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failed(e)
+            }
+        }
     }
 
     fun loadMore(force: Boolean = false) {
         val s = _state.value
         if (s.loading || s.refreshing || s.loadingMore || s.endReached) return
         if (s.error != null && !force) return
-        load(reset = false, refreshing = false)
-    }
-
-    /** Whether coming back to the feed should read it again: not when it was read moments ago. */
-    fun isStale(now: Long = System.currentTimeMillis()): Boolean = AutoRefresh.due(pageOneAt, now)
-
-    private fun query(tag: String) = FeedQuery(
-        sort = if (feed.order == FeedOrder.Hot) FeedSort.Hot else FeedSort.New,
-        window = feed.window,
-        topic = tag,
-    ).normalized()
-
-    private fun load(reset: Boolean, refreshing: Boolean) {
-        job?.cancel()
-        started = true
-        val shown = feed
+        if (job?.isActive == true) return
+        _state.update { it.copy(loadingMore = true, error = null) }
         job = viewModelScope.launch {
-            if (reset) {
-                _state.update {
-                    it.copy(
-                        loading = !refreshing,
-                        refreshing = refreshing,
-                        loadingMore = false,
-                        endReached = false,
-                        error = null,
-                        items = if (refreshing) it.items else emptyList(),
-                    )
-                }
-            } else {
-                _state.update { it.copy(loadingMore = true, error = null) }
-            }
             try {
-                var current = if (reset) shown.tags.map { TagFeedRules.Stream(it) } else streams
-                var merge = TagFeedRules.merge(shown, current)
-                val before = if (reset) 0 else _state.value.items.size
-                var rounds = 0
-                var lastError: ApiException? = null
-                var read = 0
-                var failed = 0
-                // Filters (left-out tags, unanswered only) can leave little of a page: a few rounds more, at most.
-                while (merge.more.isNotEmpty() && rounds < TagFeedRules.MAX_ROUNDS) {
-                    val ask = merge.more
-                    val first = reset && rounds == 0
-                    if (first) _progress.value = 0 to ask.size
-                    val results = readNext(current, ask) { done -> if (first) _progress.value = done to ask.size }
-                    var stuck = false
-                    current = current.map { stream ->
-                        val result = results[stream.tag] ?: return@map stream
-                        read++
-                        val failure = result.error ?: return@map result.stream
-                        failed++
-                        lastError = failure
-                        // A later page that failed holds the list where it is (TagFeedRules.afterFailedRead).
-                        if (stream.pages.isNotEmpty()) stuck = true
-                        TagFeedRules.afterFailedRead(stream)
-                    }
-                    merge = TagFeedRules.merge(shown, current)
-                    rounds++
-                    if (stuck || merge.ended || merge.items.size - before >= TagFeedRules.MIN_NEW_ITEMS) break
-                }
-                _progress.value = null
-                val nothingRead = read > 0 && failed == read
-                if (reset && refreshing && nothingRead) {
-                    // Pulled to refresh, and not one tag could be read: the list stays as it was, with the error.
-                    _state.update { it.copy(refreshing = false, error = lastError) }
-                    return@launch
-                }
-                streams = current
-                if (reset && !nothingRead) pageOneAt = System.currentTimeMillis()
-                // Nothing new because a tag couldn't be read: the error and Retry, never "the end of the list".
-                val error = if (failed > 0 && merge.items.size <= before) lastError else null
-                _state.update {
-                    it.copy(
-                        items = merge.items,
-                        loading = false,
-                        refreshing = false,
-                        loadingMore = false,
-                        endReached = merge.ended && error == null,
-                        error = error,
-                        swapped = reset && refreshing,
-                    )
-                }
+                publish(error = more(s.items.size))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _progress.value = null
-                _state.update { it.copy(loading = false, refreshing = false, loadingMore = false, error = e.asApiException()) }
+                failed(e)
             }
         }
     }
 
-    /** The next page of each of [tags], a few at a time; Stips' request limit stops the lot. */
-    private suspend fun readNext(current: List<TagFeedRules.Stream>, tags: List<String>, onDone: (Int) -> Unit): Map<String, Read> =
-        coroutineScope {
-            val gate = Semaphore(TagFeedRules.PARALLEL)
-            var done = 0
-            tags.mapNotNull { tag -> current.firstOrNull { it.tag == tag } }.map { stream ->
-                async {
-                    gate.withPermit {
-                        val read = readStream(stream)
-                        // These run on the main thread one at a time, so the count needs no lock.
-                        done++
-                        onDone(done)
-                        stream.tag to read
-                    }
-                }
-            }.awaitAll().toMap()
+    /**
+     * Reads on below what's shown: kept pages come first; the tags holding the list back are asked for their next page,
+     * a few rounds when filters leave little. A page that couldn't be read stops it there (going on would skip its
+     * questions), and when nothing new came, says why.
+     */
+    private suspend fun more(before: Int): ApiException? {
+        val kind = kind()
+        var kept = kept()
+        adoptHeld(kept)
+        var merge = merged()
+        var rounds = 0
+        var failure: ApiException? = null
+        while (merge.more.isNotEmpty() && merge.items.size - before < TagFeedRules.MIN_NEW_ITEMS && rounds < TagFeedRules.MAX_ROUNDS) {
+            val outcomes = coroutineScope {
+                merge.more.map { tag ->
+                    async { lists.read(TagLists.Key(tag, kind), TagListRules.nextPage(kept[tag], kind)) }
+                }.awaitAll()
+            }
+            failure = outcomes.firstNotNullOfOrNull { it.error }
+            kept = kept()
+            adoptHeld(kept)
+            merge = merged()
+            rounds++
+            if (failure != null || merge.ended) break
         }
-
-    private suspend fun readStream(stream: TagFeedRules.Stream): Read = try {
-        val list = repository.feedPage(query(stream.tag), stream.pages.size + 1)
-        Read(if (list.isEmpty()) stream.copy(ended = true) else stream.copy(pages = stream.pages + listOf(list)), null)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        val error = e.asApiException()
-        if (error.code == ApiException.RATE_LIMITED || error.code == ApiException.BLOCKED) throw error
-        // The stream as it was: load decides whether the tag is set aside or asked again next time.
-        Read(stream, error)
+        return if (failure != null && merge.items.size <= before) failure else null
     }
 
+    /** What reading the tops brought: how many tags answered, and why the others didn't. */
+    private class Tops(val read: Int, val errors: List<ApiException>)
+
     /**
-     * Live in a feed (#40): one tag's newest page per call, the tags in turn, so a feed of 15 tags costs no more than
-     * Home's Live. Newest-first feeds only. Returns how many questions came in on top, or -1 when the check failed.
+     * Reads the tops of [tags], waiting up to [waitMs] for them all; with [needOne], also for the first that answers.
+     * Reads that take longer go on, into the cache, and come in later.
      */
-    suspend fun pollOne(): Int {
-        val s = _state.value
-        if (feed.order != FeedOrder.New || job?.isActive == true || s.loading || s.refreshing || s.items.isEmpty()) return 0
-        val open = streams.filter { it.pages.isNotEmpty() }
-        if (open.isEmpty()) return 0
-        val tag = open[pollNext++ % open.size].tag
-        val fresh = try {
-            repository.feedPage(query(tag), 1)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return -1
+    private suspend fun readTops(tags: List<String>, waitMs: Long, gen: Int, showProgress: Boolean, needOne: Boolean): Tops {
+        if (tags.isEmpty()) return Tops(0, emptyList())
+        val kind = kind()
+        val errors = ArrayList<ApiException>()
+        var read = 0
+        var done = 0
+        val first = CompletableDeferred<Unit>()
+        val all = CompletableDeferred<Unit>()
+        // The count shows only while this waits; reads that finish later don't bring it back.
+        var waitingHere = true
+        if (showProgress) _progress.value = 0 to tags.size
+        tags.forEach { tag ->
+            // Not this load's: a read it stops waiting for still lands in the cache.
+            viewModelScope.launch {
+                val error = try {
+                    lists.read(TagLists.Key(tag, kind), 1).error
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.asApiException()
+                }
+                done++
+                if (error == null) read++ else errors += error
+                if (showProgress && waitingHere && gen == generation) _progress.value = done to tags.size
+                if (error == null || done == tags.size) first.complete(Unit)
+                if (done == tags.size) all.complete(Unit)
+            }
         }
-        // A load may have started meanwhile; it brings these too.
-        if (job?.isActive == true) return 0
-        val stream = streams.firstOrNull { it.tag == tag && it.pages.isNotEmpty() } ?: return 0
-        val newest = stream.items.maxOfOrNull { it.id } ?: 0L
-        val known = stream.items.mapTo(HashSet()) { it.id }
-        val newer = fresh.filter { it.id > newest && it.id !in known }
-        if (newer.isEmpty()) return 0
-        val updated = stream.copy(pages = listOf(newer + stream.pages.first()) + stream.pages.drop(1))
-        streams = streams.map { if (it.tag == tag) updated else it }
-        pageOneAt = System.currentTimeMillis()
-        val before = _state.value.items.mapTo(HashSet()) { it.id }
-        val merge = TagFeedRules.merge(feed, streams)
-        _state.update { it.copy(items = merge.items, swapped = false) }
-        return merge.items.count { it.id !in before }
+        try {
+            withTimeoutOrNull(waitMs) { all.await() }
+            if (needOne && read == 0) first.await()
+        } finally {
+            waitingHere = false
+            if (gen == generation) _progress.value = null
+        }
+        return Tops(read, errors.toList())
+    }
+
+    /** Reads the tops of the lists due (by their tag's pace) in the background; they come in at the list's top. */
+    private fun refreshDue(skip: Collection<String> = emptyList()) {
+        viewModelScope.launch {
+            val kind = kind()
+            val kept = kept()
+            val now = System.currentTimeMillis()
+            for (tag in feed.tags) {
+                if (tag in skip || !TagListRules.due(kept[tag], kind, now)) continue
+                launch {
+                    try {
+                        lists.read(TagLists.Key(tag, kind), 1)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // Stips paused the phone: the list comes up to date another time.
+                    }
+                }
+            }
+        }
+    }
+
+    /** The cache read something for this feed: in at once at the list's top, otherwise when it's back there. */
+    private fun onListChanged() {
+        if (!started) return
+        if (!atTop || job?.isActive == true) {
+            waiting = true
+            return
+        }
+        if (settle?.isActive == true) return
+        // A few lists usually come in together: one change for them all.
+        settle = viewModelScope.launch {
+            delay(SETTLE_MS)
+            if (atTop && job?.isActive != true) adoptLatest() else waiting = true
+        }
+    }
+
+    private fun adoptLatest() {
+        val gen = generation
+        viewModelScope.launch {
+            val kept = kept()
+            if (gen == generation && job?.isActive != true) layOut(kept) else waiting = true
+        }
+    }
+
+    /** The list laid out anew from [kept]: every tag from its newest. */
+    private fun layOut(kept: Map<String, TagListRules.Entry>, error: ApiException? = null, swapped: Boolean = false): TagFeedRules.Merge {
+        shown = kept.filterValues { it.read }
+        base = shown.mapValues { (_, entry) -> entry.items.maxOfOrNull { it.id } ?: Long.MIN_VALUE }
+        held = null
+        waiting = false
+        val now = System.currentTimeMillis()
+        _unreadable.value = feed.tags.filter { tag ->
+            val entry = kept[tag]
+            entry?.read != true && TagListRules.unavailable(entry, now)
+        }
+        return publish(error, swapped)
+    }
+
+    /** The cache's lists taken in below what's shown, which keeps still (TagFeedRules.Held). */
+    private fun adoptHeld(kept: Map<String, TagListRules.Entry>) {
+        val kind = kind()
+        shown = feed.tags.mapNotNull { tag ->
+            val entry = kept[tag]?.takeIf { it.read }?.let { TagListRules.keepShowing(shown[tag], it, kind) } ?: shown[tag]
+            entry?.let { tag to it }
+        }.toMap()
+        held = TagFeedRules.Held(floor = _state.value.items.minOfOrNull { it.id }, base = base)
+    }
+
+    private fun merged(): TagFeedRules.Merge {
+        val streams = feed.tags.map { tag ->
+            val entry = shown[tag]
+            if (entry == null) TagFeedRules.Stream(tag, ended = true) else TagFeedRules.Stream(tag, entry.pages, entry.ended)
+        }
+        return TagFeedRules.merge(feed, streams, held)
+    }
+
+    private fun publish(error: ApiException? = null, swapped: Boolean = false): TagFeedRules.Merge {
+        val merge = merged()
+        // The first rows open at once when tapped, from what's kept.
+        repository.keepShown(merge.items.take(KEEP_SHOWN))
+        _state.update {
+            it.copy(
+                items = merge.items,
+                loading = false,
+                refreshing = false,
+                loadingMore = false,
+                endReached = merge.ended && error == null,
+                error = error,
+                swapped = swapped,
+            )
+        }
+        return merge
+    }
+
+    private fun failed(e: Exception) {
+        _progress.value = null
+        _state.update { it.copy(loading = false, refreshing = false, loadingMore = false, error = e.asApiException()) }
+    }
+
+    private companion object {
+        /** With nothing kept, how long a new feed waits for all its tags before showing those that answered. */
+        const val FIRST_WAIT_MS = 1_200L
+
+        /** Tags added to a feed that shows already: a moment, so they're in its first layout. */
+        const val SOFT_WAIT_MS = 800L
+
+        /** Pulling down: the spinner waits this long at most; slower lists come in later. */
+        const val PULL_WAIT_MS = 3_000L
+        const val SETTLE_MS = 400L
+        const val KEEP_SHOWN = 60
     }
 }

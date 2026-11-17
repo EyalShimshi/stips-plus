@@ -58,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -66,13 +67,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import io.github.eyalshimshi.betterstips.R
-import io.github.eyalshimshi.betterstips.data.AppSettings
-import io.github.eyalshimshi.betterstips.data.api.RateGuard
 import io.github.eyalshimshi.betterstips.data.model.FeedOrder
 import io.github.eyalshimshi.betterstips.data.model.HotWindow
 import io.github.eyalshimshi.betterstips.data.model.TagFeed
@@ -84,9 +80,7 @@ import io.github.eyalshimshi.betterstips.ui.components.appViewModel
 import io.github.eyalshimshi.betterstips.ui.components.shareText
 import io.github.eyalshimshi.betterstips.ui.feed.QuestionList
 import io.github.eyalshimshi.betterstips.ui.feed.windowLabel
-import io.github.eyalshimshi.betterstips.ui.theme.LocalAppSettings
 import io.github.eyalshimshi.betterstips.util.TagFeedRules
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -238,19 +232,19 @@ private fun FeedPage(
     onDelete: () -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val settings = LocalAppSettings.current
-    val vm = appViewModel(key = "tag-feed-" + feed.id) { TagFeedViewModel(it.repository, feed) }
+    val vm = appViewModel(key = "tag-feed-" + feed.id) { TagFeedViewModel(it.tagLists, it.repository, feed) }
     val state by vm.state.collectAsStateWithLifecycle()
     val progress by vm.progress.collectAsStateWithLifecycle()
+    val unreadable by vm.unreadable.collectAsStateWithLifecycle()
     val channels by container.channels.channels.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(feed) { vm.update(feed) }
-    LaunchedEffect(active) { if (active) vm.ensureLoaded() }
+    // On screen (its page settled, v0.24): what's kept shows at once, and the lists due are read behind it.
+    LaunchedEffect(active) { if (active) vm.onEnter() }
     val firstEnter = remember { enters }
     LaunchedEffect(enters) {
-        if (enters != firstEnter && active && vm.isStale()) vm.refresh()
+        if (enters != firstEnter && active) vm.onEnter()
     }
     val firstReselect = remember { reselects }
     LaunchedEffect(reselects) {
@@ -259,20 +253,9 @@ private fun FeedPage(
             listState.scrollToItem(0)
         }
     }
-    // Live in feeds (#40): while this newest-first feed is on screen, one of its tags is checked at Live's rate, in turn.
-    LaunchedEffect(active, settings.feedsLive, settings.liveIntervalSeconds, feed.order) {
-        if (!active || !settings.feedsLive || feed.order != FeedOrder.New) return@LaunchedEffect
-        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            var misses = 0
-            while (true) {
-                delay(AppSettings.liveDelayMs(settings.liveIntervalSeconds, misses))
-                if (!RateGuard.allowBackground()) continue
-                val atTop = listState.firstVisibleItemIndex <= 2
-                val added = vm.pollOne()
-                misses = if (added < 0) misses + 1 else 0
-                if (added > 0 && atTop) listState.animateScrollToItem(0)
-            }
-        }
+    // Newer lists come in only while the list's top is on screen, so what's being read stays put.
+    LaunchedEffect(vm, listState) {
+        snapshotFlow { listState.firstVisibleItemIndex == 0 }.collect { vm.setAtTop(it) }
     }
 
     QuestionList(
@@ -289,6 +272,7 @@ private fun FeedPage(
                 FeedHeader(
                     feed = feed,
                     progress = progress,
+                    unreadable = unreadable,
                     onOrder = { container.tagFeeds.save(feed.copy(order = it)) },
                     onWindow = { container.tagFeeds.save(feed.copy(window = it)) },
                     onEdit = onEdit,
@@ -303,6 +287,7 @@ private fun FeedPage(
 private fun FeedHeader(
     feed: TagFeed,
     progress: Pair<Int, Int>?,
+    unreadable: List<String>,
     onOrder: (FeedOrder) -> Unit,
     onWindow: (HotWindow) -> Unit,
     onEdit: () -> Unit,
@@ -383,6 +368,15 @@ private fun FeedHeader(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp, end = 12.dp),
+            )
+        }
+        // Tags Stips failed on lately, with nothing kept to show (v0.24): skipped, and tried again later.
+        if (unreadable.isNotEmpty()) {
+            Text(
+                stringResource(R.string.feed_unreadable, unreadable.joinToString(", ") { "#$it" }),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 6.dp, end = 12.dp),
             )
         }
     }

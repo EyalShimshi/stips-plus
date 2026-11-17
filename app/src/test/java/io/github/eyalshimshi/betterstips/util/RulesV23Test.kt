@@ -228,7 +228,7 @@ class RulesV23Test {
         assertEquals("15 tags at most (the owner's pick)", 15, TagFeedRules.MAX_TAGS)
         assertEquals(TagFeedRules.MAX_TAGS, many.size)
         assertEquals(listOf("a", "b"), many.take(2))
-        assertEquals("never half an emoji", "❤️🪖🚗", TagFeedRules.cleanEmoji("❤️🪖🚗💰📚"))
+        assertEquals("one emoji, whole (v0.24)", "❤️", TagFeedRules.cleanEmoji("❤️🪖🚗💰📚"))
         assertFalse(TagFeedRules.valid(feed(FeedOrder.New)))
         assertFalse(TagFeedRules.valid(feed(FeedOrder.New, "a").copy(name = " ")))
         assertTrue(TagFeedRules.valid(feed(FeedOrder.New, "a")))
@@ -268,25 +268,6 @@ class RulesV23Test {
         val waiting = TagFeedRules.merge(f, listOf(a, stream("B")))
         assertTrue("nothing shows before every tag answered", waiting.items.isEmpty())
         assertEquals(listOf("B"), waiting.more)
-    }
-
-    @Test
-    fun feeds_aPageThatFailedNeverEndsTheFeed() {
-        val f = feed(FeedOrder.New, "A", "B")
-        val a = stream("A", listOf(q(100, "A"), q(80, "A")))
-        val b = stream("B", listOf(q(95, "B"), q(50, "B")))
-        // A's next page couldn't be read (offline): A stays open, so the feed waits for it instead of skipping its
-        // questions between 80 and 50, or ending.
-        assertEquals(a, TagFeedRules.afterFailedRead(a))
-        val merge = TagFeedRules.merge(f, listOf(TagFeedRules.afterFailedRead(a), b))
-        assertEquals(listOf(100L, 95L, 80L), merge.items.map { it.id })
-        assertEquals(listOf("A"), merge.more)
-        assertFalse(merge.ended)
-        // A tag whose first page couldn't be read is set aside, so the others still show.
-        val aside = TagFeedRules.afterFailedRead(stream("C"))
-        assertTrue(aside.ended)
-        val withC = TagFeedRules.merge(feed(FeedOrder.New, "A", "B", "C"), listOf(a, b, aside))
-        assertEquals(listOf(100L, 95L, 80L), withC.items.map { it.id })
     }
 
     @Test

@@ -156,8 +156,6 @@ data class AppSettings(
     val testBuilds: Boolean = false,
     /** Your feeds (#40) also show as chips in Home's channel row. */
     val feedChipsOnHome: Boolean = false,
-    /** New questions come into a feed by themselves while it's open (#40), one tag at a time, at Live's rate. */
-    val feedsLive: Boolean = false,
 ) {
     fun anonymousModeOn(now: Long = System.currentTimeMillis()): Boolean = anonymousUntil > now
 
@@ -256,7 +254,6 @@ class SettingsStore(context: Context) {
             .putBoolean("checkUpdates", next.checkUpdates)
             .putBoolean("testBuilds", next.testBuilds)
             .putBoolean("feedChipsOnHome", next.feedChipsOnHome)
-            .putBoolean("feedsLive", next.feedsLive)
             .apply()
     }
 
@@ -304,7 +301,6 @@ class SettingsStore(context: Context) {
             checkUpdates = prefs.getBoolean("checkUpdates", defaults.checkUpdates),
             testBuilds = prefs.getBoolean("testBuilds", defaults.testBuilds),
             feedChipsOnHome = prefs.getBoolean("feedChipsOnHome", defaults.feedChipsOnHome),
-            feedsLive = prefs.getBoolean("feedsLive", defaults.feedsLive),
         )
     }
 

@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -101,6 +102,11 @@ class QuestionActions internal constructor(
 
     fun isPinned(question: Question): Boolean = pinned[question.id] ?: question.userPinned
 
+    /** A pin changed somewhere (a swipe, the question's page): rows show it until their list reloads with Stips' own. */
+    internal fun notePinned(questionId: Long, pin: Boolean) {
+        pinned[questionId] = pin
+    }
+
     fun available(question: Question, action: QuestionSwipe): Boolean = SwipeRules.questionAvailable(
         action = action,
         isOwner = question.isOwner,
@@ -136,18 +142,31 @@ class QuestionActions internal constructor(
 
     private fun togglePin(question: Question) {
         val pin = !isPinned(question)
-        pinned[question.id] = pin
         scope.launch {
-            try {
-                container.repository.setPinned(question.id, pin)
-                container.repository.updateCachedQuestion(question.id) { it.copy(userPinned = pin) }
-                snackbar.showSnackbar(context.getString(if (pin) R.string.swipe_pinned else R.string.swipe_unpinned))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                pinned[question.id] = !pin
-                snackbar.showSnackbar(context.getString(R.string.action_failed))
-            }
+            if (!setPin(question, pin)) return@launch
+            val undo = snackbar.showSnackbar(
+                context.getString(if (pin) R.string.swipe_pinned else R.string.swipe_unpinned),
+                actionLabel = context.getString(R.string.swipe_undo),
+                duration = SnackbarDuration.Short,
+            ) == SnackbarResult.ActionPerformed
+            // Cancel (v0.24): back as it was, without another message.
+            if (undo) setPin(question, !pin)
+        }
+    }
+
+    /** Pins or unpins [question] on Stips, the row showing it at once; false, with a message, when it didn't work. */
+    private suspend fun setPin(question: Question, pin: Boolean): Boolean {
+        pinned[question.id] = pin
+        return try {
+            container.repository.setPinned(question.id, pin)
+            container.repository.updateCachedQuestion(question.id) { it.copy(userPinned = pin) }
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            pinned[question.id] = !pin
+            snackbar.showSnackbar(context.getString(R.string.action_failed))
+            false
         }
     }
 
@@ -164,7 +183,13 @@ class QuestionActions internal constructor(
                     )
                     if (result == SnackbarResult.ActionPerformed) {
                         container.repository.setFollowing(question.id, false)
-                        snackbar.showSnackbar(context.getString(R.string.following_off))
+                        val undo = snackbar.showSnackbar(
+                            context.getString(R.string.following_off),
+                            actionLabel = context.getString(R.string.swipe_undo),
+                            duration = SnackbarDuration.Short,
+                        )
+                        // Cancel (v0.24): the updates come back.
+                        if (undo == SnackbarResult.ActionPerformed) container.repository.setFollowing(question.id, true)
                     }
                 } else {
                     container.repository.setFollowing(question.id, true)
@@ -280,6 +305,8 @@ fun QuestionActionsHost(snackbar: SnackbarHostState, onSignIn: () -> Unit, conte
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val actions = remember(container, context, scope, snackbar) { QuestionActions(container, context, scope, snackbar) }
+    // A pin from anywhere (the question's page too) shows in every list at once (v0.24).
+    LaunchedEffect(actions) { container.repository.pins.collect { (id, pinned) -> actions.notePinned(id, pinned) } }
     val currentOnSignIn by rememberUpdatedState(onSignIn)
     val replyInPrivate by rememberUpdatedState(LocalReplyInPrivate.current)
     actions.onSignIn = { currentOnSignIn() }
@@ -427,5 +454,7 @@ fun SwipeableQuestionRow(question: Question, channel: Channel?, onClick: () -> U
         )
     }
     val hint = LocalQuestionRowHint.current?.takeIf { it.questionId == question.id }?.hint
-    SwipeActionsBox(right, left, modifier, hint = hint) { QuestionRow(question, channel, onClick) }
+    SwipeActionsBox(right, left, modifier, hint = hint) {
+        QuestionRow(question, channel, onClick, pinned = actions?.isPinned(question) ?: question.userPinned)
+    }
 }

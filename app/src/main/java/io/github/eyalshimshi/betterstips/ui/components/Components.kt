@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -370,12 +371,23 @@ fun specialNameColor(): Color {
 
 private const val SPECIAL_NAME_SEED = 0xFF9069D7.toInt()
 
+/**
+ * A question in a list. [pinned]: whether you pinned it, as of now (a swipe may have changed it since the list came):
+ * its pin is filled, and its count follows (v0.24).
+ */
 @Composable
-fun QuestionRow(question: Question, channel: Channel?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun QuestionRow(
+    question: Question,
+    channel: Channel?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    pinned: Boolean = question.userPinned,
+) {
+    val pinCount = (question.pinCount + if (pinned == question.userPinned) 0 else if (pinned) 1 else -1).coerceAtLeast(0)
     val description = listOf(
         question.title,
         answersText(question.answerCount),
-        pinsText(question.pinCount),
+        pinsText(pinCount),
         authorName(question.author),
         agoText(question.postedAt),
     ).filter { it.isNotBlank() }.joinToString(", ")
@@ -383,7 +395,7 @@ fun QuestionRow(question: Question, channel: Channel?, onClick: () -> Unit, modi
         headlineContent = {
             Text(question.title, maxLines = 3, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
         },
-        supportingContent = { QuestionMetaRow(question, Modifier.padding(top = 6.dp)) },
+        supportingContent = { QuestionMetaRow(question, Modifier.padding(top = 6.dp), pinCount = pinCount, pinned = pinned) },
         leadingContent = { CoverArt(question, channel?.seedColor, 56.dp) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = modifier
@@ -394,7 +406,7 @@ fun QuestionRow(question: Question, channel: Channel?, onClick: () -> Unit, modi
 
 /**
  * Under a question: the asker (photo and name, cut with "…" when long) at the start; the number of answers and pins
- * and the time, as symbols, at the end (#4).
+ * and the time, as symbols, at the end (#4). A question you pinned has its pin filled, in [pinnedTint] (v0.24).
  */
 @Composable
 fun QuestionMetaRow(
@@ -406,6 +418,8 @@ fun QuestionMetaRow(
     clickableAuthor: Boolean = false,
     color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     special: SpecialAccounts.Entry? = null,
+    pinned: Boolean = question.userPinned,
+    pinnedTint: Color = MaterialTheme.colorScheme.primary,
 ) {
     val style = MaterialTheme.typography.labelMedium
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -425,7 +439,11 @@ fun QuestionMetaRow(
         Spacer(Modifier.width(8.dp))
         MetaItem(Icons.Outlined.ChatBubbleOutline, answerCount.toString(), color)
         Spacer(Modifier.width(10.dp))
-        MetaItem(Icons.Outlined.PushPin, pinCount.toString(), color)
+        if (pinned) {
+            MetaItem(Icons.Filled.PushPin, pinCount.toString(), color, iconTint = pinnedTint)
+        } else {
+            MetaItem(Icons.Outlined.PushPin, pinCount.toString(), color)
+        }
         val ago = shortAgoText(question.postedAt)
         if (ago.isNotEmpty()) {
             Spacer(Modifier.width(10.dp))
@@ -435,9 +453,9 @@ fun QuestionMetaRow(
 }
 
 @Composable
-private fun MetaItem(icon: ImageVector, text: String, color: Color) {
+private fun MetaItem(icon: ImageVector, text: String, color: Color, iconTint: Color = color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(3.dp))
         Text(text, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
     }

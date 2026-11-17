@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.AlertDialog
@@ -65,19 +64,10 @@ fun FeedsSettingsContent(settings: AppSettings) {
         title = stringResource(R.string.settings_feed_chips),
         summary = stringResource(R.string.settings_feed_chips_summary),
         index = 0,
-        count = 2,
+        count = 1,
         onClick = { container.settings.update { it.copy(feedChipsOnHome = !it.feedChipsOnHome) } },
         icon = Icons.Outlined.Home,
         trailing = { Switch(checked = settings.feedChipsOnHome, onCheckedChange = null) },
-    )
-    GroupRow(
-        title = stringResource(R.string.settings_feeds_live),
-        summary = stringResource(R.string.settings_feeds_live_summary, settings.liveIntervalSeconds),
-        index = 1,
-        count = 2,
-        onClick = { container.settings.update { it.copy(feedsLive = !it.feedsLive) } },
-        icon = Icons.Outlined.Bolt,
-        trailing = { Switch(checked = settings.feedsLive, onCheckedChange = null) },
     )
 
     GroupLabel(stringResource(R.string.settings_your_feeds))

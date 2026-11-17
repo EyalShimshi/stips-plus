@@ -24,6 +24,9 @@ object RateGuard {
     const val REFILL_MS = 2_000L
     const val BACKGROUND_FLOOR = 20.0
 
+    /** Preloading the feeds runs above this (v0.24). */
+    const val WARM_FLOOR = 30.0
+
     /** How many of the user's requests may queue for budget (about 10 s); beyond that they're refused at once. */
     const val MAX_DEBT = 5.0
     const val PROBE_MS = 60_000L
@@ -90,6 +93,16 @@ object RateGuard {
     fun allowBackground(now: Long = System.currentTimeMillis()): Boolean {
         refill(now)
         return pausedUntil <= now && tokens >= BACKGROUND_FLOOR
+    }
+
+    /**
+     * Whether preloading the feeds (v0.24) may send a request now: only while most of the budget is left, so everything
+     * else (what the user does, and the automatic checks) always goes first.
+     */
+    @Synchronized
+    fun allowWarmup(now: Long = System.currentTimeMillis()): Boolean {
+        refill(now)
+        return pausedUntil <= now && tokens >= WARM_FLOOR
     }
 
     /** Stips refused a request because of the limit. */

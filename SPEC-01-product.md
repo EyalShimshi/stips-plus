@@ -170,7 +170,7 @@ Stips+ is a fast, native Android app for reading and answering questions on [sti
 | F-116 | Unanswered questions (#37, v0.22) | P1 | A category on Home, first after All: the newest questions no one has answered yet; Live adds new ones |
 | F-117 | Copy an answer (#38, v0.23) | P1 | *Copy text* in an answer's ⋮ menu and as a swipe choice; *Select all* takes just that answer |
 | F-118 | "You" on your answers; detach anonymous ones (#39, v0.23) | P1 | Your answers say "You", anonymous ones too, and so do quotes of them; anonymous answers and questions can be detached, after which they aren't yours |
-| F-119 | Your feeds (#40, v0.23) | P1 | A Feeds tab: feeds of up to 15 tags each (New, Hot or Mixed; tags left out; unanswered only), read tag by tag as you scroll; ready-made ones; a long press on a #tag adds it; Settings → Feeds: on Home, Live, manage, share as a link |
+| F-119 | Your feeds (#40, v0.23) | P1 | A Feeds tab: feeds of up to 15 tags each (New, Hot or Mixed; tags left out; unanswered only), read tag by tag as you scroll; ready-made ones; a long press on a #tag adds it; Settings → Feeds: on Home, manage, share as a link (Live in feeds until v0.23) |
 | F-120 | Test builds and releases (#41, v0.23) | P1 | Every change is a test build first, offered only to apps that ask for test builds; the owner releases one to everyone by hand |
 | F-121 | Announcements (#41, v0.23) | P1 | The owner can tell every Stips+ from 0.23 something: a pop-up once, and the latest in Settings → About |
 | F-122 | Download counts (#42, v0.23) | P2 | Stips+'s creator sees how often it was downloaded |
@@ -179,7 +179,11 @@ Stips+ is a fast, native Android app for reading and answering questions on [sti
 | F-125 | Share a question's link (#45, v0.23) | P2 | Sharing a question sends its link only |
 | F-126 | Change your profile photo (#46, v0.23) | P1 | Pick a photo, place it in a circle, save; the app checks that Stips kept it |
 | F-127 | The language switch keeps the direction (#47, v0.23) | P1 | Back to the phone's language, the app stays right-to-left in Hebrew |
-## 7. Non-functional requirements
+| F-128 | Feeds open at once (v0.24) | P1 | A feed shows its kept questions at once and brings in what's new behind them; a tag Stips can't read never holds it up, and is named; New and Mixed switch without waiting |
+| F-129 | Feeds preloaded (v0.24) | P1 | While the app is open, feeds are brought up to date with requests to spare, so even the first look is ready |
+| F-130 | Any emoji for a feed (v0.24) | P2 | A picker in the app's style with every emoji the phone has, by group, recent ones first |
+| F-131 | Undo after a pin or updates (v0.24) | P1 | Pinning, unpinning and turning updates on or off say so with *Undo* |
+| F-132 | Your pins on the card (v0.24) | P2 | A question you pinned shows a filled pin in the accent color, in lists, hot cards and its page |## 7. Non-functional requirements
 
 | Area | Requirement |
 |---|---|

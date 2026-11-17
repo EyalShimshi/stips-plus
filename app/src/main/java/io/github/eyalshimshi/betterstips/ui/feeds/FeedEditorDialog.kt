@@ -2,6 +2,7 @@ package io.github.eyalshimshi.betterstips.ui.feeds
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -12,13 +13,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,9 +53,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.eyalshimshi.betterstips.R
@@ -63,9 +70,6 @@ import io.github.eyalshimshi.betterstips.ui.feed.windowLabel
 import io.github.eyalshimshi.betterstips.util.TagFeedRules
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-
-/** The emojis offered for a feed; the first is none. */
-private val FEED_EMOJIS = listOf("", "❤️", "🪖", "🚗", "💰", "📚", "💼", "🎮", "🎵", "⚽", "🍔", "✈️", "🐶", "💡", "🌍", "😂", "🧠", "🏥", "💻", "🎨")
 
 /**
  * Making or changing a feed (#40), full screen: an emoji and a name, up to 15 tags (Stips' own suggestions come as you
@@ -80,8 +84,10 @@ fun FeedEditorDialog(
     onDismiss: () -> Unit,
     onSave: (TagFeed) -> Unit,
 ) {
+    val store = LocalAppContainer.current.tagFeeds
     var name by rememberSaveable { mutableStateOf(initial?.name.orEmpty()) }
     var emoji by rememberSaveable { mutableStateOf(initial?.emoji.orEmpty()) }
+    var pickingEmoji by rememberSaveable { mutableStateOf(false) }
     val tags = remember { mutableStateListOf<String>().apply { addAll(initial?.tags ?: TagFeedRules.cleanTags(startTags)) } }
     val excluded = remember { mutableStateListOf<String>().apply { addAll(initial?.excluded.orEmpty()) } }
     var order by rememberSaveable { mutableStateOf(initial?.order ?: FeedOrder.New) }
@@ -129,23 +135,18 @@ fun FeedEditorDialog(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FEED_EMOJIS.forEach { choice ->
-                            FilterChip(
-                                selected = emoji == choice,
-                                onClick = { emoji = choice },
-                                label = { Text(choice.ifEmpty { stringResource(R.string.feed_no_emoji) }) },
-                            )
-                        }
+                    // The feed's emoji (any the phone has, v0.24) by its name.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        EmojiButton(emoji) { pickingEmoji = true }
+                        Spacer(Modifier.width(12.dp))
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it.take(TagFeedRules.MAX_NAME) },
+                            label = { Text(stringResource(R.string.feed_name)) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it.take(TagFeedRules.MAX_NAME) },
-                        label = { Text(stringResource(R.string.feed_name)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
 
                     SectionLabel(stringResource(R.string.feed_tags, tags.size, TagFeedRules.MAX_TAGS))
                     TagsEditor(tags, TagFeedRules.MAX_TAGS, stringResource(R.string.feed_add_tag))
@@ -208,6 +209,40 @@ fun FeedEditorDialog(
                     TagsEditor(excluded, TagFeedRules.MAX_EXCLUDED, stringResource(R.string.feed_add_excluded))
                     Spacer(Modifier.height(32.dp))
                 }
+            }
+        }
+        if (pickingEmoji) {
+            EmojiPickerSheet(
+                current = emoji,
+                recent = remember { store.recentEmoji() },
+                onPick = { picked ->
+                    emoji = picked
+                    store.usedEmoji(picked)
+                    pickingEmoji = false
+                },
+                onDismiss = { pickingEmoji = false },
+            )
+        }
+    }
+}
+
+/** The feed's emoji, big and round (a smiley with a + when it has none): a tap opens the picker. */
+@Composable
+private fun EmojiButton(emoji: String, onClick: () -> Unit) {
+    val label = if (emoji.isEmpty()) stringResource(R.string.feed_emoji_add) else stringResource(R.string.feed_emoji_change, emoji)
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier
+            .size(56.dp)
+            .semantics { contentDescription = label },
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            if (emoji.isEmpty()) {
+                Icon(Icons.Outlined.AddReaction, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            } else {
+                Text(emoji, fontSize = 28.sp)
             }
         }
     }
