@@ -285,7 +285,9 @@ A CI probe read 24 busy questions (26–151 answers each, 1,203 answers) and the
 - **How fast a tag answers (v0.24, measured 2026-11-17, the owner's test feed, safe filter off):** most tags' first page of New in 0.3–0.5 s (Stips' New without a tag: 0.5 s); a rare tag can take seconds (#גמירה, 30 questions over nine months: about 3.5 s, every time); one, #גמירות, makes Stips fail: about 15 s, then HTTP 500 "We're sorry, something went wrong", every time (with the safe filter on it answers 18 questions in 0.5 s). Five tags at once take as long as the slowest. A tag's hot list answers in 0.2–0.5 s.
 - **The safe filter comes before paging:** pages are full (30) but for the last, and a page after the last is empty (#גמירות with the filter on: 18, 0, 0). So a short page is the end, and the next page follows from how many came.
 - **Hot for a tag:** `ask.hot` with `topic` returns the window's questions (a week: up to 30, often fewer; a month: 30 a page) in Stips' own order, not by answers; Stips leaves some tags out of hot lists altogether (#סקס: none, filter on or off).
-- **Home's New and a tag's New are the same questions:** a question with the tag that's on Home's first page is on the tag's, so when Home's page reaches back to a tag's newest kept question, its newer ones are all there (D-167).## 3. Data model (in the app)
+- **Home's New and a tag's New are the same questions:** a question with the tag that's on Home's first page is on the tag's, so when Home's page reaches back to a tag's newest kept question, its newer ones are all there (D-167).
+
+## 3. Data model (in the app)
 
 ```kotlin
 data class Question(

@@ -71,6 +71,7 @@ import io.github.eyalshimshi.betterstips.data.model.PenPalPost
 import io.github.eyalshimshi.betterstips.ui.Routes
 import io.github.eyalshimshi.betterstips.ui.components.AuthorName
 import io.github.eyalshimshi.betterstips.ui.components.ErrorCard
+import io.github.eyalshimshi.betterstips.ui.components.LinkifiedText
 import io.github.eyalshimshi.betterstips.ui.components.LocalAppContainer
 import io.github.eyalshimshi.betterstips.ui.components.MessageCard
 import io.github.eyalshimshi.betterstips.ui.components.PresenceAvatar
@@ -344,10 +345,13 @@ private fun PenPalCard(
                     Spacer(Modifier.height(48.dp))
                 }
             }
-            Text(
+            // Links open (v0.24): Stips links in the app, imgbb and other picture links in the viewer (AppRoot's
+            // link handler). Not selectable, so a tap anywhere else still opens the chat.
+            LinkifiedText(
                 post.text,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 8.dp, end = 10.dp),
+                selectable = false,
             )
         }
     }

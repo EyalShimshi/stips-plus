@@ -183,7 +183,10 @@ Stips+ is a fast, native Android app for reading and answering questions on [sti
 | F-129 | Feeds preloaded (v0.24) | P1 | While the app is open, feeds are brought up to date with requests to spare, so even the first look is ready |
 | F-130 | Any emoji for a feed (v0.24) | P2 | A picker in the app's style with every emoji the phone has, by group, recent ones first |
 | F-131 | Undo after a pin or updates (v0.24) | P1 | Pinning, unpinning and turning updates on or off say so with *Undo* |
-| F-132 | Your pins on the card (v0.24) | P2 | A question you pinned shows a filled pin in the accent color, in lists, hot cards and its page |## 7. Non-functional requirements
+| F-132 | Your pins on the card (v0.24) | P2 | A question you pinned shows a filled pin in the accent color, in lists, hot cards and its page |
+| F-133 | Links in pen-pal posts (v0.24) | P1 | Links in a post open: pictures (imgbb) in the viewer, Stips links in the app, the rest in the browser; tapping the post elsewhere still opens a chat |
+
+## 7. Non-functional requirements
 
 | Area | Requirement |
 |---|---|

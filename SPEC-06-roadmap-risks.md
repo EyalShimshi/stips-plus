@@ -24,7 +24,7 @@
 | M3.17 v0.21 | #32: the language first in the intro, and in Settings; #33: pinned chats; #34: no fake delete swipe; #35: the vote you gave, clear; #36: missing pages say what's missing | The app speaks the reader's language from the first screen; chats you care about stay on top |
 | M3.18 v0.22 | #37: the Unanswered category on Home | Answerers find questions that are still waiting |
 | M3.19 v0.23 | #40: your feeds; #41: test builds, releases and announcements; #42: download counts; #43: picture links and the viewer's menu; #44: New or topics from any layout; #45: a question's link; #46: the profile photo; #38, #39, #47 | The owner tries changes before anyone else gets them, reaches every user when he must, and reads Stips by his own subjects |
-| M3.20 v0.24 | Feeds that open at once (a cache on the phone, smart refreshing, broken tags skipped), preloading with spare requests, any emoji, *Undo* after pins and updates, your pins on the card; Live in feeds removed | A feed is as quick to open as Home, without asking Stips more |
+| M3.20 v0.24 | Feeds that open at once (a cache on the phone, smart refreshing, broken tags skipped), preloading with spare requests, any emoji, *Undo* after pins and updates, your pins on the card, links in pen-pal posts; Live in feeds removed; released to everyone as build 41 | A feed is as quick to open as Home, without asking Stips more |
 | M4 Public | Only with Stips' written permission | Playbook §7 checklist, README in Hebrew and English |
 
 ## 2. Spikes

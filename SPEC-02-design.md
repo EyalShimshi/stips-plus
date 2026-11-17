@@ -345,6 +345,7 @@ Before v0.9, groups on one page (DESIGN-PHILOSOPHY §8): **Stips account** (sign
 - Top bar "Pen pals"; a short intro line; cards with avatar (online dot), name, time and the message; ⋮ → Report / Hide / Hide everything from this user, or Delete on your own post.
 - **v0.16 (D-115):** the top bar ends with the Live chip, as on Home: a tap turns it on or off, a long press opens *Live pen pals* (the switch, the shared rate, "Each check reads the board's newest 30 posts"). New posts slide in on top; at the top, the list scrolls to show them. Entering the tab, or coming back to the app on it, brings new posts in the same way.
 - Tap a card → the private chat with its author (sign in first if needed).
+- **Links (v0.24, D-173):** links in a post are primary and underlined, as in chats; a tap opens a picture link (imgbb) in the viewer, a Stips link in the app, others in the browser. The text isn't selectable, so a tap anywhere else on the card still opens the chat.
 - *New post* opens a sheet: 255 characters, "My last message", *Send*; or explains what's missing (sign in, 5 flowers, the posting interval).
 - Signed-in users outside ages 13–21 see Stips' "for teens" message instead of the board.
 
