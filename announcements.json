@@ -1,4 +1,15 @@
 {
   "about": "Announcements for everyone with Stips+ 0.23 or later. Newest first. How to post one: MAINTAINING.md, 'Announcements'.",
-  "announcements": []
+  "announcements": [
+    {
+      "id": "2026-11-feeds",
+      "title": { "he": "חדש: פידים משלך", "en": "New: your own feeds" },
+      "text": {
+        "he": "בסרגל למטה יש עכשיו \"פידים\". פיד מאחד עד 15 תגיות לרשימה אחת: חדשות, חמות או מעורב. לחיצה ארוכה על #תגית בשאלה מוסיפה אותה לפיד, ואפשר גם להתחיל מפידים מוכנים.",
+        "en": "There's a new Feeds tab at the bottom. A feed brings up to 15 tags together into one list: newest, hottest or mixed. Long-press a #tag in any question to add it to a feed, or start from a ready-made one."
+      },
+      "minBuild": 39,
+      "until": "2026-12-01"
+    }
+  ]
 }
