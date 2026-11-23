@@ -193,6 +193,10 @@ class RulesV25Test {
         assertNotNull(entry)
         assertTrue("on his profile only", entry!!.profileOnly)
         assertNull(SpecialAccounts.contentBadge(SpecialAccounts.FALLEN_ID))
+        // Only his profile shows it: every other screen asks for contentBadge, which leaves it out (D-185).
+        val code = listOf(File("src/main/java"), File("app/src/main/java")).first { it.exists() }
+        val fullBadge = code.walk().filter { it.extension == "kt" && it.readText().contains("SpecialAccounts.badge(") }.map { it.name }.toList()
+        assertEquals("only the profile asks for a profile-only badge", listOf("UserProfileScreen.kt"), fullBadge)
         assertTrue("the + stays after Stips in Hebrew", entry.badgeHe!!.endsWith("\u200E"))
         assertTrue(SpecialAccounts.THANKS.any { it.userId == 457393L })
     }

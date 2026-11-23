@@ -25,7 +25,7 @@
 | M3.18 v0.22 | #37: the Unanswered category on Home | Answerers find questions that are still waiting |
 | M3.19 v0.23 | #40: your feeds; #41: test builds, releases and announcements; #42: download counts; #43: picture links and the viewer's menu; #44: New or topics from any layout; #45: a question's link; #46: the profile photo; #38, #39, #47 | The owner tries changes before anyone else gets them, reaches every user when he must, and reads Stips by his own subjects |
 | M3.20 v0.24 | Feeds that open at once (a cache on the phone, smart refreshing, broken tags skipped), preloading with spare requests, any emoji, *Undo* after pins and updates, your pins on the card, links in pen-pal posts; Live in feeds removed; released to everyone as build 41 | A feed is as quick to open as Home, without asking Stips more |
-| M3.21 v0.25 | The privacy screen and the chats lock, the sealed token, the disclaimer, Fallen's thanks, SECURITY.md and checkable APKs (from Fallen's advice); Vocaroo voice notes; shared feeds as cards and as pages; an honest status line | A skeptical reader can check how Stips+ treats the account and where an APK came from; voice questions play in the app |
+| M3.21 v0.25 | The privacy screen and the chats lock, the sealed token, the disclaimer, Fallen's thanks, SECURITY.md and checkable APKs (from Fallen's advice); Vocaroo voice notes; shared feeds as cards and as pages; an honest status line; released to everyone as build 44 | A skeptical reader can check how Stips+ treats the account and where an APK came from; voice questions play in the app |
 | M4 Public | Only with Stips' written permission | Playbook §7 checklist, README in Hebrew and English |
 
 ## 2. Spikes
