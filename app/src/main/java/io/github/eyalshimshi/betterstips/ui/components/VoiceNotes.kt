@@ -275,7 +275,7 @@ private fun SeekBar(fraction: Float, enabled: Boolean, color: Color, track: Colo
                 ) { change, _ ->
                     change.consume()
                     dragging = at(change.position.x, size.width)
-                },
+                }
             },
     ) {
         val y = size.height / 2f
