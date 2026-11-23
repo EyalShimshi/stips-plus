@@ -310,6 +310,15 @@ object TagFeedRules {
         return cleaned(feed).takeIf(::valid)
     }
 
+    /**
+     * Whether [a] and [b] bring the same questions, whatever their names, emoji and order: the same tags, the same
+     * tags left out, and "unanswered only" alike (v0.25). A shared feed you already have opens yours.
+     */
+    fun sameLists(a: TagFeed, b: TagFeed): Boolean {
+        fun set(tags: List<String>) = tags.map(TagListRules::normalTag).toSet()
+        return set(a.tags) == set(b.tags) && set(a.excluded) == set(b.excluded) && a.unansweredOnly == b.unansweredOnly
+    }
+
     // --- Ready-made feeds (#40) ---
 
     /** A ready-made feed, offered while you have none: its tags checked against Stips' own suggestions. */

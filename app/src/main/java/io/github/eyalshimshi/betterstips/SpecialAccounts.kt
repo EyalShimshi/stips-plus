@@ -46,6 +46,16 @@ object SpecialAccounts {
         Entry(253000, verified = true),
         // "מערכת סטיפס", Stips' system account (#21).
         Entry(50916, official = true),
+        // Fallen, for his security advice (v0.25): on his profile only, like Stips+'s creator's. The left-to-right mark
+        // keeps the "+" after "Stips" in Hebrew.
+        Entry(FALLEN_ID, badgeHe = "יועץ אבטחה ל-Stips+\u200E", badgeEn = "Stips+ security advisor", color = 0xFF00897B.toInt(), profileOnly = true),
+    )
+
+    /** Someone who helped make Stips+ (v0.25), for About's thanks and the README's: a tap opens their profile. */
+    data class Thanks(val userId: Long, val name: String, val forHe: String, val forEn: String)
+
+    val THANKS: List<Thanks> = listOf(
+        Thanks(FALLEN_ID, "Fallen", forHe = "עצות אבטחה ופרטיות", forEn = "Security and privacy advice"),
     )
 
     private val byId: Map<Long, Entry> = ALL.associateBy { it.userId }
@@ -68,4 +78,7 @@ object SpecialAccounts {
 
     /** Who made Stips+ (#26): Settings ends with a line about him and a button to his profile. */
     const val CREATOR_ID: Long = 275580
+
+    /** Fallen (v0.25): security advice, thanked in About and badged on his profile. */
+    const val FALLEN_ID: Long = 457393
 }

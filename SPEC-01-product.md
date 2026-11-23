@@ -185,6 +185,12 @@ Stips+ is a fast, native Android app for reading and answering questions on [sti
 | F-131 | Undo after a pin or updates (v0.24) | P1 | Pinning, unpinning and turning updates on or off say so with *Undo* |
 | F-132 | Your pins on the card (v0.24) | P2 | A question you pinned shows a filled pin in the accent color, in lists, hot cards and its page |
 | F-133 | Links in pen-pal posts (v0.24) | P1 | Links in a post open: pictures (imgbb) in the viewer, Stips links in the app, the rest in the browser; tapping the post elsewhere still opens a chat |
+| F-134 | The privacy screen (v0.25) | P1 | Settings → Privacy and safety: hide Stips+ in recent apps, and block screenshots and screen recordings |
+| F-135 | The chats lock (v0.25) | P1 | The Chats tab, every chat and sending to chats open with the fingerprint, face or screen lock, and lock again after the time chosen away; the chats widget hides the messages meanwhile |
+| F-136 | The token sealed (v0.25) | P1 | The sign-in token is kept encrypted with a key Android's keystore keeps |
+| F-137 | Voice notes (v0.25) | P1 | Vocaroo links in questions, answers, chats and pen-pal posts play in the app in rows like WhatsApp's voice messages, loading only on ▶ |
+| F-138 | Shared feeds as cards and pages (v0.25) | P1 | A feed's link is a card in chats, and opens the feed itself with its questions and *Add to my feeds* |
+| F-139 | Trust you can check (v0.25) | P1 | SECURITY.md, a clearer disclaimer, every APK's provenance and its signing certificate, the thanks |
 
 ## 7. Non-functional requirements
 

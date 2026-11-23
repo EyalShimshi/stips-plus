@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -44,6 +45,7 @@ import io.github.eyalshimshi.betterstips.SpecialAccounts
 import io.github.eyalshimshi.betterstips.data.LinkPreviews
 import io.github.eyalshimshi.betterstips.data.model.ProfilePage
 import io.github.eyalshimshi.betterstips.data.model.Question
+import io.github.eyalshimshi.betterstips.data.model.TagFeed
 import io.github.eyalshimshi.betterstips.data.model.UserProfile
 import io.github.eyalshimshi.betterstips.ui.components.Avatar
 import io.github.eyalshimshi.betterstips.ui.components.CoverArt
@@ -52,6 +54,7 @@ import io.github.eyalshimshi.betterstips.ui.components.QuestionIcon
 import io.github.eyalshimshi.betterstips.ui.components.SpecialBadgePill
 import io.github.eyalshimshi.betterstips.ui.components.answersText
 import io.github.eyalshimshi.betterstips.ui.components.authorName
+import io.github.eyalshimshi.betterstips.ui.feeds.feedOrderLabel
 import io.github.eyalshimshi.betterstips.ui.user.badgeLabel
 import io.github.eyalshimshi.betterstips.util.ChatLinks
 import io.github.eyalshimshi.betterstips.util.Links
@@ -78,12 +81,26 @@ private fun rememberPreview(target: ChatLinks.Target): CardPreview {
 
 /**
  * The card for a Stips question or profile link in a chat bubble (v0.18): the question's photo, title, asker and
- * answers, or the person's photo, name, badge, credibility and counts. A tap opens it in the app; a long-press is the
- * bubble's (copying the message).
+ * answers, or the person's photo, name, badge, credibility and counts. A shared feed's (v0.25) shows its emoji, name,
+ * order and tags. A tap opens it in the app; a long-press is the bubble's (copying the message).
  */
 @Composable
 internal fun ChatLinkCard(target: ChatLinks.Target, content: Color, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
     val uriHandler = LocalUriHandler.current
+    if (target is ChatLinks.Target.Feed) {
+        val openFeed = stringResource(R.string.link_card_open_feed)
+        Box(
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(content.copy(alpha = 0.07f))
+                .combinedClickable(onClickLabel = openFeed, onClick = { uriHandler.openUri(target.link) }, onLongClick = onLongClick)
+                .padding(8.dp),
+        ) {
+            FeedCardContent(target.feed, content)
+        }
+        return
+    }
     val card = rememberPreview(target)
     val openLabel = stringResource(if (target is ChatLinks.Target.Question) R.string.link_card_open_question else R.string.link_card_open_profile)
     Box(
@@ -167,6 +184,57 @@ private fun PersonCardContent(profile: UserProfile, page: ProfilePage?, content:
                 style = MaterialTheme.typography.labelMedium,
                 color = content.copy(alpha = 0.7f),
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** A shared feed (v0.25): its emoji in a tile, its name, how many tags and its order, then the tags themselves. */
+@Composable
+private fun FeedCardContent(feed: TagFeed, content: Color) {
+    val resources = LocalContext.current.resources
+    val details = buildList {
+        add(resources.getQuantityString(R.plurals.feed_tag_count, feed.tags.size, feed.tags.size))
+        add(feedOrderLabel(feed.order))
+        if (feed.unansweredOnly) add(stringResource(R.string.channel_unanswered))
+    }.joinToString(" · ")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(percent = 28))
+                .background(content.copy(alpha = 0.08f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (feed.emoji.isNotBlank()) {
+                Text(feed.emoji, style = MaterialTheme.typography.titleLarge)
+            } else {
+                Icon(Icons.Outlined.DynamicFeed, contentDescription = null, tint = content.copy(alpha = 0.7f))
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                feed.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = content,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                details,
+                style = MaterialTheme.typography.labelMedium,
+                color = content.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                feed.tags.joinToString(" · ") { "#$it" },
+                style = MaterialTheme.typography.labelSmall,
+                color = content.copy(alpha = 0.7f),
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }

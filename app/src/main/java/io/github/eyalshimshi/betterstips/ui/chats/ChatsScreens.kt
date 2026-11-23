@@ -140,6 +140,7 @@ import io.github.eyalshimshi.betterstips.ui.Routes
 import io.github.eyalshimshi.betterstips.ui.components.BackButton
 import io.github.eyalshimshi.betterstips.ui.components.ErrorCard
 import io.github.eyalshimshi.betterstips.ui.components.LinkifiedText
+import io.github.eyalshimshi.betterstips.ui.components.VoiceNoteRow
 import io.github.eyalshimshi.betterstips.ui.components.LocalAppContainer
 import io.github.eyalshimshi.betterstips.ui.components.LocalOpenProfile
 import io.github.eyalshimshi.betterstips.ui.components.LocalUnreadCounts
@@ -171,6 +172,7 @@ import io.github.eyalshimshi.betterstips.ui.components.glowOnce
 import io.github.eyalshimshi.betterstips.ui.theme.LocalAppSettings
 import io.github.eyalshimshi.betterstips.util.ReplyRefs
 import io.github.eyalshimshi.betterstips.util.ChatLinks
+import io.github.eyalshimshi.betterstips.util.Vocaroo
 import io.github.eyalshimshi.betterstips.util.SwipeSide
 import io.github.eyalshimshi.betterstips.util.TutorialRules
 import io.github.eyalshimshi.betterstips.data.Tutorials
@@ -1478,13 +1480,25 @@ private fun Bubble(
                         )
                     }
                     shown.target?.let { ChatLinkCard(it, content, openMenu) }
-                    if (shown.body.isNotBlank() || shown.target == null) {
+                    // Vocaroo recordings play in the bubble (v0.25); a message of only their links is just the rows.
+                    val recordings = remember(shown.body) { Vocaroo.find(shown.body) }
+                    val onlyRecordings = remember(shown.body) { Vocaroo.onlyRecordings(shown.body) }
+                    if ((shown.body.isNotBlank() || shown.target == null) && !onlyRecordings) {
                         LinkifiedText(
                             shown.body,
                             style = MaterialTheme.typography.bodyLarge.copy(color = content),
                             selectable = false,
                             targets = bodyTargets,
                             onTarget = onJump,
+                        )
+                    }
+                    recordings.forEach { recording ->
+                        VoiceNoteRow(
+                            recording,
+                            Modifier.width(232.dp),
+                            tint = content,
+                            textColor = content.copy(alpha = 0.7f),
+                            menu = false,
                         )
                     }
                 }

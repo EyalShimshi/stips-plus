@@ -3,6 +3,7 @@ package io.github.eyalshimshi.betterstips.data
 import android.content.Context
 import android.content.SharedPreferences
 import io.github.eyalshimshi.betterstips.data.model.HotWindow
+import io.github.eyalshimshi.betterstips.util.PrivacyRules
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -156,6 +157,14 @@ data class AppSettings(
     val testBuilds: Boolean = false,
     /** Your feeds (#40) also show as chips in Home's channel row. */
     val feedChipsOnHome: Boolean = false,
+    /** The privacy screen (v0.25): a blank card in recent apps; before Android 13 that blocks screenshots too. */
+    val hideInRecents: Boolean = false,
+    /** The privacy screen (v0.25): no screenshots or screen recordings of the app. */
+    val blockScreenshots: Boolean = false,
+    /** Chats open only with the fingerprint, face or screen lock (v0.25); the rest of the app stays open. */
+    val chatLock: Boolean = false,
+    /** Minutes away from the app before chats lock again: one of [PrivacyRules.LOCK_MINUTES]; 0 is at once. */
+    val chatLockMinutes: Int = PrivacyRules.DEFAULT_LOCK_MINUTES,
 ) {
     fun anonymousModeOn(now: Long = System.currentTimeMillis()): Boolean = anonymousUntil > now
 
@@ -254,6 +263,10 @@ class SettingsStore(context: Context) {
             .putBoolean("checkUpdates", next.checkUpdates)
             .putBoolean("testBuilds", next.testBuilds)
             .putBoolean("feedChipsOnHome", next.feedChipsOnHome)
+            .putBoolean("hideInRecents", next.hideInRecents)
+            .putBoolean("blockScreenshots", next.blockScreenshots)
+            .putBoolean("chatLock", next.chatLock)
+            .putInt("chatLockMinutes", next.chatLockMinutes)
             .apply()
     }
 
@@ -301,6 +314,11 @@ class SettingsStore(context: Context) {
             checkUpdates = prefs.getBoolean("checkUpdates", defaults.checkUpdates),
             testBuilds = prefs.getBoolean("testBuilds", defaults.testBuilds),
             feedChipsOnHome = prefs.getBoolean("feedChipsOnHome", defaults.feedChipsOnHome),
+            hideInRecents = prefs.getBoolean("hideInRecents", defaults.hideInRecents),
+            blockScreenshots = prefs.getBoolean("blockScreenshots", defaults.blockScreenshots),
+            chatLock = prefs.getBoolean("chatLock", defaults.chatLock),
+            chatLockMinutes = prefs.getInt("chatLockMinutes", defaults.chatLockMinutes).takeIf { it in PrivacyRules.LOCK_MINUTES }
+                ?: defaults.chatLockMinutes,
         )
     }
 

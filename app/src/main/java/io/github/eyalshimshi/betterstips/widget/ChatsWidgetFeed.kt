@@ -197,6 +197,11 @@ class ChatsWidgetFeed(
         false
     }
 
+    /** Draws the widget again: the chats lock was turned on or off (v0.25), so its rows show the text or hide it. */
+    fun redraw() {
+        if (hasWidgets()) scope.launch { updateWidgets() }
+    }
+
     private suspend fun updateWidgets() {
         try {
             ChatsWidget().updateAll(context)

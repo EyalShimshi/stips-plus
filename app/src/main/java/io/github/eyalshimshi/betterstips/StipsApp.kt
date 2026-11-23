@@ -16,6 +16,7 @@ import io.github.eyalshimshi.betterstips.data.TagLists
 import io.github.eyalshimshi.betterstips.data.FeedWarmer
 import io.github.eyalshimshi.betterstips.data.BlockStore
 import io.github.eyalshimshi.betterstips.data.ChannelsSource
+import io.github.eyalshimshi.betterstips.data.ChatLock
 import io.github.eyalshimshi.betterstips.data.ChatReadMarks
 import io.github.eyalshimshi.betterstips.data.FeedCache
 import io.github.eyalshimshi.betterstips.data.ImageLinkResolver
@@ -31,6 +32,7 @@ import io.github.eyalshimshi.betterstips.data.SettingsStore
 import io.github.eyalshimshi.betterstips.data.StipsRepository
 import io.github.eyalshimshi.betterstips.data.Timings
 import io.github.eyalshimshi.betterstips.data.UserBadges
+import io.github.eyalshimshi.betterstips.data.VoicePlayer
 import io.github.eyalshimshi.betterstips.data.api.CookieGenerationStamp
 import io.github.eyalshimshi.betterstips.data.api.NetLogListener
 import io.github.eyalshimshi.betterstips.data.api.SessionCookieJar
@@ -66,7 +68,8 @@ class AppContainer(private val app: Application) {
     }
 
     private val cookieJar = SessionCookieJar()
-    private val userAgent = UserAgentInterceptor("StipsPlus/$versionName (Android ${Build.VERSION.RELEASE}; unofficial; +$REPO_URL)")
+    private val userAgentText = "StipsPlus/$versionName (Android ${Build.VERSION.RELEASE}; unofficial; +$REPO_URL)"
+    private val userAgent = UserAgentInterceptor(userAgentText)
 
     /**
      * API calls share one HTTP/2 connection, as the official app's do. v0.3 used HTTP/1.1 because #3 looked like a
@@ -156,6 +159,12 @@ class AppContainer(private val app: Application) {
 
     /** The chats widget's list (#8). */
     val chatsWidget = ChatsWidgetFeed(app, repository, session, appScope)
+
+    /** Vocaroo recordings, played in their rows (v0.25); built when a screen first plays one. */
+    val voicePlayer: VoicePlayer by lazy { VoicePlayer(app, userAgentText) }
+
+    /** Whether chats are open now, with the chats lock on (v0.25). In memory: each start of the app finds them locked. */
+    val chatLock = ChatLock()
 
     val imageLoader: ImageLoader = ImageLoader.Builder(app)
         .okHttpClient(imageClient)

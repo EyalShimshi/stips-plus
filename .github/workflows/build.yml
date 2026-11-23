@@ -295,9 +295,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # No approval since v0.23 (#41): a test build reaches only apps that asked for test builds. Releasing it to everyone
-    # is release.yml, which only the owner can run.
+    # is release.yml, which only the owner can run. id-token and attestations: the APK's provenance (v0.25, D-181).
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -311,6 +313,14 @@ jobs:
         if: needs.launch.result == 'success'
         with:
           name: launch-summary
+
+      # Signed proof that this APK was built here, by this workflow, from this commit (v0.25, D-181), kept by GitHub and
+      # Sigstore's public log. Anyone can check a download: gh attestation verify stipsplus-N.apk -R EyalShimshi/stips-plus.
+      # The release (release.yml) copies the same file, so the proof holds for it too.
+      - name: Attest where the APK was built
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: stipsplus-${{ github.run_number }}.apk
 
       # The notes are the round's summary (RELEASE-NOTES.md) and what was checked, so the owner reads both on the phone.
       - name: Write the release notes
@@ -334,7 +344,7 @@ jobs:
               echo "**Checked before publishing:** the unit tests and the APK check (constructors that libraries call by name, #7; no permission to install apps). The launch test on an emulator was skipped for this hotfix ([skip launch])."
             fi
             echo
-            echo "<sub>Commit ${GITHUB_SHA:0:7} · $(( ${APK_BYTES:-0} / 1024 )) KB · signing certificate SHA-256 ${APK_CERT:0:16}…</sub>"
+            echo "<sub>Commit ${GITHUB_SHA:0:7} · $(( ${APK_BYTES:-0} / 1024 )) KB · signing certificate SHA-256 ${APK_CERT:-unknown} · check this APK: \`gh attestation verify stipsplus-$RUN_NUMBER.apk -R $GITHUB_REPOSITORY\`</sub>"
           } > release-notes.md
 
       - name: Publish the test build

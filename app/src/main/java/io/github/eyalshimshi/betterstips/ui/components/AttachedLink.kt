@@ -36,14 +36,21 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.eyalshimshi.betterstips.R
 import io.github.eyalshimshi.betterstips.util.ImageLinks
 import io.github.eyalshimshi.betterstips.util.Links
+import io.github.eyalshimshi.betterstips.util.Vocaroo
 
 /**
  * A link attached to a question or an answer. A title written for it shows with the link's real site after it, so
  * it can't pass for another site (#14). A picture link is only "Show image" (#43), which opens it in the app's viewer
- * (#15); once its picture couldn't be shown, it's the link again, for the browser.
+ * (#15); once its picture couldn't be shown, it's the link again, for the browser. A Vocaroo recording is its
+ * voice-note row (v0.25).
  */
 @Composable
 fun AttachedLink(url: String, title: String?, style: TextStyle, modifier: Modifier = Modifier) {
+    val recording = remember(url) { Vocaroo.recording(url) }
+    if (recording != null) {
+        VoiceNoteRow(recording, modifier)
+        return
+    }
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val image = remember(url) { ImageLinks.classify(url) }

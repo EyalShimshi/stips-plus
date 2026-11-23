@@ -40,6 +40,8 @@ class LinkPreviews(private val repository: StipsRepository) {
 
     /** Reads [target] from Stips when it isn't known yet; null when it couldn't now (offline, or Stips busy). */
     suspend fun load(target: ChatLinks.Target): Preview? {
+        // A shared feed's card is all in its link (v0.25).
+        if (target is ChatLinks.Target.Feed) return null
         cached(target)?.let { return it }
         return lock.withLock {
             cached(target)?.let { return@withLock it }
@@ -58,6 +60,7 @@ class LinkPreviews(private val repository: StipsRepository) {
                         }
                         Preview.OfPerson(profile, page)
                     }
+                    is ChatLinks.Target.Feed -> null
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -74,6 +77,7 @@ class LinkPreviews(private val repository: StipsRepository) {
     private fun key(target: ChatLinks.Target): String = when (target) {
         is ChatLinks.Target.Question -> "q${target.id}"
         is ChatLinks.Target.Profile -> "p${target.id}"
+        is ChatLinks.Target.Feed -> "f${target.link}"
     }
 
     private companion object {

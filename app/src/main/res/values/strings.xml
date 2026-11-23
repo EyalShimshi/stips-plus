@@ -115,11 +115,11 @@
     <string name="password">Password</string>
     <string name="show_password">Show password</string>
     <string name="hide_password">Hide password</string>
-    <string name="sign_in_privacy">Your password goes only to Stips. The app keeps only the sign-in token Stips gives back.</string>
+    <string name="sign_in_privacy">Your password goes only to Stips, once, over an encrypted connection (HTTPS), and is never saved. The app keeps only the sign-in token Stips gives back, encrypted on this phone.</string>
     <string name="sign_in_create_account">Create an account on Stips</string>
     <string name="sign_in_forgot">Forgot your password?</string>
     <string name="sign_in_failed">Stips didn\'t accept this email and password.</string>
-    <string name="disclaimer">An independent app, not affiliated with Stips.</string>
+    <string name="disclaimer">An independent app, not affiliated with Stips. It comes as is, without any warranty: use it at your own risk.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -557,7 +557,7 @@
     <string name="settings_sign_in_summary">To answer, ask, chat and get notifications</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_privacy_safety">Privacy and safety</string>
-    <string name="settings_privacy_safety_summary">Anonymous mode, hidden content</string>
+    <string name="settings_privacy_safety_summary">Anonymous mode, hidden content, privacy screen, chats lock</string>
     <string name="settings_stips_summary">Contact Stips, the rules, about the site</string>
     <string name="settings_about_summary">Version %1$s, the intro, expert mode</string>
     <string name="settings_expert_group">For experts</string>
@@ -1003,10 +1003,7 @@
     <string name="settings_your_feeds">Your feeds</string>
     <string name="feed_move_up">Move up</string>
     <string name="feed_move_down">Move down</string>
-    <string name="feed_shared_title">Add the feed \"%1$s\"?</string>
     <string name="feed_shared_excluded">Leaves out %1$s</string>
-    <string name="feed_shared_add">Add feed</string>
-    <string name="feed_shared_not_now">Not now</string>
     <string name="feed_unreadable">Stips couldn\'t read %1$s right now. Stips+ will try again later.</string>
     <string name="feed_emoji_add">Choose an emoji</string>
     <string name="feed_emoji_change">Emoji: %1$s. Tap to change it</string>
@@ -1029,5 +1026,52 @@
     <plurals name="feed_count">
         <item quantity="one">%d feed</item>
         <item quantity="other">%d feeds</item>
+    </plurals>
+    <!-- v0.25: voice notes (Vocaroo) -->
+    <string name="voice_note">Voice recording</string>
+    <string name="voice_loading">Loading…</string>
+    <string name="voice_failed">Couldn\'t play it. Try again</string>
+    <string name="voice_play">Play the recording</string>
+    <string name="voice_pause">Pause</string>
+    <string name="voice_speed">Speed %1$s×</string>
+    <string name="voice_actions">Recording options</string>
+    <string name="voice_open_vocaroo">Open on Vocaroo</string>
+    <!-- v0.25: shared feeds -->
+    <string name="link_card_open_feed">Open the feed</string>
+    <string name="feed_preview_title">Shared feed</string>
+    <string name="feed_link_unreadable">This feed link can\'t be read.</string>
+    <string name="feed_preview_full">You already have %1$d feeds, the most there can be. Delete one to add this one.</string>
+    <string name="feed_preview_yours">In your feeds: open it</string>
+    <string name="feed_preview_add">Add to my feeds</string>
+    <!-- v0.25: the privacy screen, the chats lock, security and thanks -->
+    <string name="settings_privacy_screen_group">Privacy screen</string>
+    <string name="settings_hide_recents">Hide in recent apps</string>
+    <string name="settings_hide_recents_summary">Recent apps show a blank card instead of what\'s on the screen</string>
+    <string name="settings_hide_recents_summary_old">Recent apps show a blank card. On this Android version, that also blocks screenshots</string>
+    <string name="settings_block_screenshots">Block screenshots</string>
+    <string name="settings_block_screenshots_summary">No screenshots or screen recordings of Stips+</string>
+    <string name="settings_chat_lock_group">Chats lock</string>
+    <string name="settings_chat_lock">Lock chats</string>
+    <string name="settings_chat_lock_summary">Chats open only with your fingerprint, face or screen lock</string>
+    <string name="settings_chat_lock_unavailable">Set a screen lock on your phone first</string>
+    <string name="settings_chat_lock_after">Lock again</string>
+    <string name="chat_lock_after_now">As soon as you leave the app</string>
+    <string name="chat_lock_prompt_title">Open your chats</string>
+    <string name="chat_lock_prompt_subtitle">With your fingerprint, face or screen lock</string>
+    <string name="chat_lock_locked_title">Chats are locked</string>
+    <string name="chat_lock_locked_body">Open them with your fingerprint, face or screen lock. Settings → Privacy and safety turns the lock off.</string>
+    <string name="chat_lock_unlock">Unlock</string>
+    <string name="widget_chat_locked">🔒 Locked</string>
+    <string name="settings_security_group">Security</string>
+    <string name="settings_security_doc">How Stips+ protects your account</string>
+    <string name="settings_security_doc_summary">What it sends, what it keeps on the phone, and how to report a problem (on GitHub)</string>
+    <string name="settings_thanks_group">Thanks</string>
+    <plurals name="chat_lock_after_minutes">
+        <item quantity="one">After %d minute away</item>
+        <item quantity="other">After %d minutes away</item>
+    </plurals>
+    <plurals name="widget_chat_locked_new">
+        <item quantity="one">🔒 %d new message</item>
+        <item quantity="other">🔒 %d new messages</item>
     </plurals>
 </resources>

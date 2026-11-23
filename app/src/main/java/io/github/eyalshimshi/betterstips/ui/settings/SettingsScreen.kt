@@ -3,6 +3,17 @@ package io.github.eyalshimshi.betterstips.ui.settings
 import io.github.eyalshimshi.betterstips.ui.feeds.FeedsSettingsContent
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.material.icons.outlined.DynamicFeed
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.HideImage
+import androidx.compose.material.icons.outlined.NoPhotography
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.github.eyalshimshi.betterstips.ui.lock.DeviceAuth
+import io.github.eyalshimshi.betterstips.ui.lock.rememberDeviceCheck
+import io.github.eyalshimshi.betterstips.util.PrivacyRules
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Science
@@ -1108,7 +1119,141 @@ private fun PrivacyPage(settings: AppSettings, snackbar: SnackbarHostState) {
         onClick = if (blockCount == 0) null else ({ clearBlocks = true }),
         icon = Icons.Outlined.VisibilityOff,
     )
+    PrivacyScreenRows(settings)
+    ChatLockRows(settings)
+
+    // How Stips+ treats the account and the phone (v0.25, SECURITY.md), on GitHub.
+    val context = LocalContext.current
+    GroupLabel(stringResource(R.string.settings_security_group))
+    GroupRow(
+        title = stringResource(R.string.settings_security_doc),
+        summary = stringResource(R.string.settings_security_doc_summary),
+        index = 0,
+        count = 1,
+        onClick = { openInBrowser(context, AppContainer.REPO_URL + "/blob/main/SECURITY.md") },
+        icon = Icons.Outlined.Security,
+        trailing = externalIcon(),
+    )
 }
+
+/**
+ * The privacy screen (v0.25, D-175), for the whole app: a blank card in recent apps, and no screenshots or screen
+ * recordings. Before Android 13 the first takes the second with it: Android has no other way there.
+ */
+@Composable
+private fun PrivacyScreenRows(settings: AppSettings) {
+    val store = LocalAppContainer.current.settings
+    val separate = Build.VERSION.SDK_INT >= PrivacyRules.SEPARATE_RECENTS_SDK
+    GroupLabel(stringResource(R.string.settings_privacy_screen_group))
+    GroupRow(
+        title = stringResource(R.string.settings_hide_recents),
+        summary = stringResource(if (separate) R.string.settings_hide_recents_summary else R.string.settings_hide_recents_summary_old),
+        index = 0,
+        count = 2,
+        onClick = { store.update { it.copy(hideInRecents = !it.hideInRecents) } },
+        icon = Icons.Outlined.HideImage,
+        trailing = { Switch(checked = settings.hideInRecents, onCheckedChange = null) },
+    )
+    GroupRow(
+        title = stringResource(R.string.settings_block_screenshots),
+        summary = stringResource(R.string.settings_block_screenshots_summary),
+        index = 1,
+        count = 2,
+        onClick = { store.update { it.copy(blockScreenshots = !it.blockScreenshots) } },
+        icon = Icons.Outlined.NoPhotography,
+        trailing = { Switch(checked = settings.blockScreenshots, onCheckedChange = null) },
+    )
+}
+
+/**
+ * The chats lock (v0.25, D-176): turning it on or off asks for the fingerprint, face or screen lock first, so nobody
+ * else holding the unlocked phone can open chats by turning it off. Without a screen lock on the phone it can't be on.
+ */
+@Composable
+private fun ChatLockRows(settings: AppSettings) {
+    val container = LocalAppContainer.current
+    val context = LocalContext.current
+    // Read again whenever the page comes back: a screen lock may have been set up meanwhile.
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+    val canLock = remember(lifecycleState) { DeviceAuth.available(context) }
+    var lockAfterDialog by remember { mutableStateOf(false) }
+    val turnOn = rememberDeviceCheck {
+        container.chatLock.unlock()
+        container.settings.update { it.copy(chatLock = true) }
+        container.chatsWidget.redraw()
+    }
+    val turnOff = rememberDeviceCheck {
+        container.settings.update { it.copy(chatLock = false) }
+        container.chatsWidget.redraw()
+    }
+    val on = settings.chatLock
+    GroupLabel(stringResource(R.string.settings_chat_lock_group))
+    GroupRow(
+        title = stringResource(R.string.settings_chat_lock),
+        summary = stringResource(if (canLock) R.string.settings_chat_lock_summary else R.string.settings_chat_lock_unavailable),
+        index = 0,
+        count = if (on) 2 else 1,
+        onClick = when {
+            on && canLock -> turnOff
+            // No screen lock any more: nothing could check, and chats are open anyway.
+            on -> ({
+                container.settings.update { it.copy(chatLock = false) }
+                container.chatsWidget.redraw()
+            })
+            canLock -> turnOn
+            else -> null
+        },
+        icon = Icons.Outlined.Fingerprint,
+        trailing = { Switch(checked = on, onCheckedChange = null, enabled = canLock || on) },
+    )
+    if (on) {
+        GroupRow(
+            title = stringResource(R.string.settings_chat_lock_after),
+            summary = lockAfterLabel(settings.chatLockMinutes),
+            index = 1,
+            count = 2,
+            onClick = { lockAfterDialog = true },
+            icon = Icons.Outlined.Timer,
+        )
+    }
+    if (lockAfterDialog) {
+        AlertDialog(
+            onDismissRequest = { lockAfterDialog = false },
+            title = { Text(stringResource(R.string.settings_chat_lock_after)) },
+            text = {
+                Column {
+                    PrivacyRules.LOCK_MINUTES.forEach { minutes ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    container.settings.update { it.copy(chatLockMinutes = minutes) }
+                                    lockAfterDialog = false
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = settings.chatLockMinutes == minutes, onClick = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(lockAfterLabel(minutes))
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { lockAfterDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+}
+
+/** "At once" or "After 5 minutes". */
+@Composable
+private fun lockAfterLabel(minutes: Int): String =
+    if (minutes == 0) {
+        stringResource(R.string.chat_lock_after_now)
+    } else {
+        LocalContext.current.resources.getQuantityString(R.plurals.chat_lock_after_minutes, minutes, minutes)
+    }
 
 /** The pages from the site's footer, opened in the browser. */
 @Composable
@@ -1253,6 +1398,20 @@ private fun AboutPage(container: AppContainer, settings: AppSettings, onOpenPage
             count = 1,
             onClick = null,
             icon = Icons.Outlined.Download,
+        )
+    }
+
+    // Who helped make Stips+ (v0.25): a tap opens their profile.
+    val openProfile = LocalOpenProfile.current
+    GroupLabel(stringResource(R.string.settings_thanks_group))
+    SpecialAccounts.THANKS.forEachIndexed { index, thanks ->
+        GroupRow(
+            title = thanks.name,
+            summary = if (hebrew) thanks.forHe else thanks.forEn,
+            index = index,
+            count = SpecialAccounts.THANKS.size,
+            onClick = { openProfile(thanks.userId) },
+            icon = Icons.Outlined.FavoriteBorder,
         )
     }
 

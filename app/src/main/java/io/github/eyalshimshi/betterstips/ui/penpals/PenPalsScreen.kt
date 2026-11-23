@@ -72,6 +72,7 @@ import io.github.eyalshimshi.betterstips.ui.Routes
 import io.github.eyalshimshi.betterstips.ui.components.AuthorName
 import io.github.eyalshimshi.betterstips.ui.components.ErrorCard
 import io.github.eyalshimshi.betterstips.ui.components.LinkifiedText
+import io.github.eyalshimshi.betterstips.ui.components.VoiceNotes
 import io.github.eyalshimshi.betterstips.ui.components.LocalAppContainer
 import io.github.eyalshimshi.betterstips.ui.components.MessageCard
 import io.github.eyalshimshi.betterstips.ui.components.PresenceAvatar
@@ -86,6 +87,7 @@ import io.github.eyalshimshi.betterstips.ui.home.LivePlace
 import io.github.eyalshimshi.betterstips.ui.home.LiveSheet
 import io.github.eyalshimshi.betterstips.ui.theme.LocalAppSettings
 import io.github.eyalshimshi.betterstips.util.AskRules
+import io.github.eyalshimshi.betterstips.util.Vocaroo
 import kotlinx.coroutines.delay
 
 /** חברים לעט (#4): short posts from people looking for someone to talk to. Tapping one opens a private chat. */
@@ -346,13 +348,18 @@ private fun PenPalCard(
                 }
             }
             // Links open (v0.24): Stips links in the app, imgbb and other picture links in the viewer (AppRoot's
-            // link handler). Not selectable, so a tap anywhere else still opens the chat.
-            LinkifiedText(
-                post.text,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 8.dp, end = 10.dp),
-                selectable = false,
-            )
+            // link handler). Not selectable, so a tap anywhere else still opens the chat. Vocaroo recordings are
+            // voice notes under the text (v0.25).
+            val recordings = remember(post.text) { Vocaroo.find(post.text) }
+            if (!Vocaroo.onlyRecordings(post.text)) {
+                LinkifiedText(
+                    post.text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 8.dp, end = 10.dp),
+                    selectable = false,
+                )
+            }
+            VoiceNotes(recordings, Modifier.padding(top = 4.dp, end = 10.dp))
         }
     }
 }

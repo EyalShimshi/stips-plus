@@ -145,6 +145,7 @@ Credibility bands on the site's gauge ("דירוג אמינות"): 0 red `#f5005
 **Request limit:** Stips refuses an address that sends too many calls, with `IP_RATE_LIMIT` (§2.10).
 
 **Image sizes (measured):** question photos `s` (75×75), `w400`, `z` (about 500 px, the largest); Unsplash covers accept any `w=` (1080 used for full view); profile photos `t` (50×50), `a` (200×200, square crop), `l` (the whole upload, about 300×530).
+
 ### 2.4 Question (`objType: "ask"`)
 
 | Field | Example | Use |
@@ -229,6 +230,7 @@ Background costs (all opt-in or only while the app is open): **Live** reloads th
 - **Since v0.5** Stips+ makes its calls the way the site's own pages do (D-49), with its honest User-Agent, and paces itself near the official app (40 at once, then 30 a minute: at most 190 in any 5 minutes, D-46). If Stips refuses anyway, it pauses and tries once a minute until Stips answers.
 - **The site's profile graph** loads only the selected action (`ask`, `ans` or `flowers`) and reloads when the selection changes.
 - The measurements behind these choices aren't published here (#14): they would show other clients how to get around Stips' limit.
+
 ### 2.11 Home sections, special accounts and the server's clock (#8, measured 2026-11)
 
 - **`feed.get`** is the website's home below its five hot questions. `random_order_number` is computed by the page from the local (Israel) time: 1000 × the weekday (Sunday 0) + 100 × the hour + the minute / 5, so the order changes every five minutes; Stips+ keeps one number for all pages of a visit. Page 2 had 26 sections. A section's `items` are ordinary question objects (`objType: "ask"`). Sections can repeat a topic; Stips+ merges them.
@@ -286,6 +288,12 @@ A CI probe read 24 busy questions (26–151 answers each, 1,203 answers) and the
 - **The safe filter comes before paging:** pages are full (30) but for the last, and a page after the last is empty (#גמירות with the filter on: 18, 0, 0). So a short page is the end, and the next page follows from how many came.
 - **Hot for a tag:** `ask.hot` with `topic` returns the window's questions (a week: up to 30, often fewer; a month: 30 a page) in Stips' own order, not by answers; Stips leaves some tags out of hot lists altogether (#סקס: none, filter on or off).
 - **Home's New and a tag's New are the same questions:** a question with the tag that's on Home's first page is on the tag's, so when Home's page reaches back to a tag's newest kept question, its newer ones are all there (D-167).
+
+### 2.18 Vocaroo recordings (v0.25, measured 2026-11-23)
+
+- **Links:** `https://voca.ro/<id>` (the short link; it serves Vocaroo's page itself, HTTP 200, no redirect) and `https://vocaroo.com/<id>`; older `vocaroo.com/i/<id>`, embedded `vocaroo.com/embed/<id>`. Ids are letters and digits, 10 to 12 long. The owner's example: question 19778371, whose whole text is `https://voca.ro/1lVEipfjSTbW`. Stips does nothing with them: they're plain text in questions (`text_content`), answers, chats and pen-pal posts.
+- **Where the MP3 is:** the page is a script app (`cdn.vocaroo.com/bundle….js`) whose settings name two servers, `https://media.vocaroo.com/mp3/` and `https://media1.vocaroo.com/mp3/`. Its script picks one by the id: 11 characters on `media`; 12 starting with "1", or 10, on `media1`; anything else on `media`. The file is the server and the id.
+- **What the server wants:** `media1.vocaroo.com` (BunnyCDN) answers **403** without a Referer, and **206** with `Referer: https://vocaroo.com/`, as the page's own player sends: `audio/mpeg`, byte ranges (so seeking works), 2.2 MB for the example. `media.vocaroo.com` served the same file without a Referer. A made-up id is 403 too.
 
 ## 3. Data model (in the app)
 

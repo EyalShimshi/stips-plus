@@ -91,6 +91,7 @@ flowchart TD
 - **New or topics (v0.23, D-163):** under the hot cards, in every layout, a segmented *New \| Topics* switch heads the list: *New* is the list above (with the Live chip after it), *Topics* today's questions in sections as in the website-like layout. The layout picks which one Home opens on (*Hot, then topics (like the website)*, Hebrew exactly "חמות, ואז נושאים (כמו באתר)", opens on *Topics*); a switch keeps its side until the layout changes.
 - **Feeds on Home (v0.23, D-166):** with Settings → Feeds → *Show my feeds on Home*, your feeds follow *Unanswered* in the chip row, before the channels (plain filter chips with their emoji and name; the feeds icon when a feed has no emoji). Picked, Home is that feed's list, as with *Unanswered*: no hot shelf or switch, the feed's name over it (Live in feeds until v0.23; since v0.24 it opens from what's kept, as in the Feeds tab).
 - **Announcements (v0.23, D-157):** as the app opens, a new announcement is a dialog: a 📣 icon, its title (or "From Stips+"), its text (links tappable), *Got it*, and *Open* or its own button text when it has a link. Once each; not over the intro, the blocked-account screen or a team notice, nor when a link or notification opened the app.
+
 ### 5.2 Question (compact hero)
 
 ```
@@ -140,6 +141,8 @@ flowchart TD
 - **v0.23:** every answer's ⋮ has *Copy text* (⧉; "Answer copied"), and it's a left-swipe choice too (D-161). Your answers show a small **You** pill after the name (secondary container; Hebrew "אתה" or "את" by your gender), anonymous ones as well; quotes of them read "You" ("You · Anonymous") (D-162). *Detach from my account* is offered for your anonymous answers and question too, with their own confirmation. A long press on a #tag (haptic tick) opens *Add #tag to a feed* (D-166). An attached picture link (imgbb and others) is only *Show image* until its picture fails to load, then the link (D-160). Sharing the question sends only its link (D-164).
 - **The picture viewer's ⋮ (v0.23, D-160):** over the picture, top end: *Copy image*, *Share image*, *Share image link* (the link as attached, for picture links) and *Open in browser*; for question covers and profile photos too.
 - **v0.24:** a question you pinned has its pin in the meta row filled, in the accent color (D-172): in lists, on Home's hot cards (in inversePrimary when the accent is too dark for the photo's fade) and on the question's page; the count follows a pin made by a swipe. Swiping a pin, an unpin or updates off, and the updates switch here, say so with *Undo* ("ביטול") on the message, which puts it back quietly (D-171).
+- **Voice notes (v0.25, D-184):** a Vocaroo link in the question's text or an answer's is a row under the text. It has a 40 dp circle on a 14 % tint of primary: ▶, ⏸, a spinner while loading, or ⟳ after a failure. Once loaded, a 4 dp bar with a 6 dp thumb runs from the start side (a tap or a drag seeks). Under it, "Voice recording" or "0:12 / 1:05" in labelSmall, with "Vocaroo" at the end. A 1×/1.5×/2× chip appears once it plays, and ⋮ offers *Open on Vocaroo*, *Copy link* and *Share*. A text that's only the link is just the row, and a recording attached as the link is its row too. Nothing loads before ▶. One plays at a time; it keeps playing as it scrolls away, and pauses when the screen is left. While it plays the screen stays on.
+
 ### 5.3 Chats
 
 ```
@@ -168,6 +171,8 @@ The list updates by itself when the unread count changes (checked every 10 s whi
 **Pinned chats (v0.21, D-151):** a long press on a chat (its haptic tick) opens a small menu on it: *Pin* (📌 filled) or *Unpin* (📌 outlined); TalkBack offers the same as an action. Pinned chats come first, the latest pin on top, each with a 16 dp filled pin in onSurfaceVariant by its time (beside the unread badge when there is one). Up to 5: a sixth gets "You can pin up to 5 chats" at the bottom. A pinned chat whose page hasn't loaded yet shows as it last looked, without the online dot or unread count, until its page or a new message brings it. In search, pinned chats show their pin too.
 
 Signed out: an invitation card — "Sign in to see your chats" + *Sign in*.
+
+**Chats lock (v0.25, D-176):** with *Lock chats* on, the tab shows a 48 dp lock in primary, "Chats are locked" (titleLarge), "Open them with your fingerprint, face or screen lock…" and *Unlock* (filled, with a fingerprint icon). Android's prompt opens at once. The same screen, with ←, covers a chat and *Send to…*.
 
 ### 5.4 Conversation
 
@@ -236,6 +241,8 @@ Earlier messages load by themselves as the top comes into view; there's no "Load
 
 Picked rows are tinted secondaryContainer. Below 5 flowers (not a moderator) the site's line shows under the search and send is off. Signed out, the card to sign in. Sent to one chat, that chat opens (the screen makes way for it); to more, the screen closes with "Sent to 3 chats", or "Couldn't send to Dan" for the ones that failed. When none went, the picks stay with "Couldn't send. Try again."
 
+**v0.25:** a shared feed's link is a card in the bubble (D-183): a 44 dp tile with its emoji (or the feed icon), the name in titleSmall semibold, "3 tags · New" and the tags on one line. A tap opens the feed's screen (5.11). A Vocaroo link is a 232 dp voice-note row in the bubble's colors, without ⋮ (the bubble's long press has *Copy*); a message that's only the link is just the row (D-184).
+
 ### 5.5 Profile (everyone's, social-style)
 
 ```
@@ -290,6 +297,8 @@ Picked rows are tinted secondaryContainer. Below 5 flowers (not a moderator) the
 └──────────────────────────────────────┘
 ```
 
+**v0.25 (D-178):** the line under the button reads "Your password goes only to Stips, once, over an encrypted connection (HTTPS), and is never saved. The app keeps only the sign-in token Stips gives back, encrypted on this phone." The disclaimer under the links adds "It comes as is, without any warranty: use it at your own risk."
+
 **Welcome (v0.9, D-61):** on the first launch after installing, the same form covers the app under "Stips+" (display, primary), "Welcome" and a line about the app, with *Continue as a guest* (outlined) under *Sign in*. Either one closes it for good; updates, links and shortcuts skip it.
 
 **Intro, the language first (v0.21, D-150):** before *Welcome*, **Choose a language**: "Stips+" (display, primary), "Choose a language" (headline), "בחירת שפה" under it (the other language's words, titleMedium, onSurfaceVariant), "You can change it any time in Settings → Appearance.", then three large rows (16 dp corners, a radio button, titleMedium): *Phone's language (English)*, *עברית*, *English*, the picked one on secondaryContainer, the others on surfaceContainerHigh. A tap applies it at once: the screen comes back in that language and direction, still on this step. *Next* (filled, full width); no *Skip* and no ←. In Hebrew the words swap places.
@@ -299,6 +308,8 @@ Picked rows are tinted secondaryContainer. Below 5 flowers (not a moderator) the
 **v0.16 (D-114):** a **Swipes** step after *Replies*: "Swipe for quick actions", the picture of a question slid each way with *Swipe right* and *Swipe left* lines (each opens the list of choices), then the picture of two answers slid left (someone's, and one under your nickname) with the two answer lines, and "Swipe an answer to the right to reply to it". In *Replies*, the carets in the words are bold in the accent color.
 
 ### 5.7 Settings
+
+**v0.25:** *Privacy and safety* adds three groups (D-175, D-176, D-180). **Privacy screen**: *Hide in recent apps* and *Block screenshots*, as switches; before Android 13 the first says it blocks screenshots too. **Chats lock**: *Lock chats*, a switch that asks for the fingerprint, face or screen lock to turn it on or off, or says "Set a screen lock on your phone first" without one. With it on, *Lock again* opens a dialog of radio rows: *As soon as you leave the app*, *After 1 minute away* (the default), *After 5…* and *After 30…*. **Security**: *How Stips+ protects your account* ↗ (SECURITY.md). *About* adds **Thanks** before *More*: Fallen, "Security and privacy advice"; a tap opens his profile (D-179).
 
 **v0.24:** *Feeds* loses *Live updates in feeds* (D-169).
 
@@ -346,6 +357,7 @@ Before v0.9, groups on one page (DESIGN-PHILOSOPHY §8): **Stips account** (sign
 - **v0.16 (D-115):** the top bar ends with the Live chip, as on Home: a tap turns it on or off, a long press opens *Live pen pals* (the switch, the shared rate, "Each check reads the board's newest 30 posts"). New posts slide in on top; at the top, the list scrolls to show them. Entering the tab, or coming back to the app on it, brings new posts in the same way.
 - Tap a card → the private chat with its author (sign in first if needed).
 - **Links (v0.24, D-173):** links in a post are primary and underlined, as in chats; a tap opens a picture link (imgbb) in the viewer, a Stips link in the app, others in the browser. The text isn't selectable, so a tap anywhere else on the card still opens the chat.
+- **Voice notes (v0.25, D-184):** Vocaroo links are rows under the post's text, as in questions.
 - *New post* opens a sheet: 255 characters, "My last message", *Send*; or explains what's missing (sign in, 5 flowers, the posting interval).
 - Signed-in users outside ages 13–21 see Stips' "for teens" message instead of the board.
 
@@ -369,7 +381,8 @@ Before v0.9, groups on one page (DESIGN-PHILOSOPHY §8): **Stips account** (sign
 - **No feeds yet:** a card with the DynamicFeed icon, "Your own feeds", a line on what a feed is (up to 15 tags, newest, hottest or mixed, kept on this phone), *Create a feed* (filled), and **Ready-made feeds**: five cards (emoji, name, their tags) with *Add* (then *Added*).
 - **The editor** (a full-screen dialog, *New feed* / *Edit feed*, ✕ and *Save*): since v0.24 a 56 dp round button on secondaryContainer before *Name* shows the emoji (or an add-reaction icon), and opens the **emoji picker** (D-170): a sheet titled "Choose an emoji" with *No emoji* when there is one, a scrollable row of tabs with Material's emoji icons (🕒 recent, smileys, people, nature, food, travel, activities, objects, symbols, flags) that follow the scrolling and jump to their group, and a grid of 48 dp cells with 28 sp emoji under each group's name, the current one on secondaryContainer; until v0.23 a row of emoji chips. *Name* (30 characters), *Tags (3 of 15)* as input chips with ✕, a field "Add a tag" with + and Stips' suggestions as chips under it, *Order* as segmented *New · Hot · Mixed* with a line about the one picked (and the week or month chips for *Hot*), *Only unanswered questions* (a switch), *Leave out (0 of 15)* with its own field. *Save* needs a name and a tag.
 - **Adding a tag from anywhere:** a long press on a question's #tag, or the tag page's ≡+ button, opens a sheet *Add #tag to a feed*: your feeds, each with a checkbox ticked when it has the tag (a tap adds or takes it out; a feed keeps at least one; "Full: 15 tags" when it can't take more), and *New feed with #tag* (the editor, with the tag in it).
-- **A shared feed:** opening `www.shimshii.com/stips-plus/feed/…` in Stips+ shows a dialog *Add the feed "name"?*: "8 tags · New" in primary, its tags, "Leaves out …" when it does, *Add feed* / *Not now*; added, the Feeds tab opens on it. Without the app, the site's page shows the feed and links to the app.
+- **A shared feed (v0.25, D-183):** a feed's link (`www.shimshii.com/stips-plus/feed/…`), from anywhere in Stips+ or another app, opens the feed's own screen. It has ←, the feed's emoji and name, and ⤴ to share the link; then "8 tags · Only unanswered" in primary, its tags, and "Leaves out …". *Add to my feeds* comes next (filled, full width), or *In your feeds: open it* (outlined, with ✓) when one of yours has the same tags. The order's segmented buttons can be tried (with the week or month chips), and the feed's questions follow, as in the tab. Added, the Feeds tab opens on it; with the most feeds already, a message says so. In a chat, the link is a card (5.4). Until v0.24 it was a dialog, *Add the feed "name"?*. Without the app, the site's page shows the feed and links to the app.
+
 ### 5.8 Notifications
 
 ```

@@ -8,6 +8,7 @@ import io.github.eyalshimshi.betterstips.data.model.AppUser
 import io.github.eyalshimshi.betterstips.data.model.UserProfile
 import io.github.eyalshimshi.betterstips.data.parse.Parsers
 import io.github.eyalshimshi.betterstips.diag.NetLog
+import io.github.eyalshimshi.betterstips.util.SealedText
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -245,7 +246,7 @@ class SessionStore(context: Context, private val api: StipsApi, private val cook
         _session.value = session
         val profile = session.profile
         prefs.edit()
-            .putString("token", session.token)
+            .putString("token", session.token?.let(::sealed))
             .putLong("userId", session.userId ?: 0L)
             .putBoolean("safeFilter", session.safeFilter)
             .putString("nickname", profile?.nickname)
@@ -255,9 +256,36 @@ class SessionStore(context: Context, private val api: StipsApi, private val cook
             .apply()
     }
 
+    /** The token as the phone keeps it (v0.25): sealed by the keystore, or as before when the keystore fails. */
+    private fun sealed(token: String): String = TokenVault.seal(token) ?: token.also {
+        NetLog.event("session", "the keystore couldn't seal the sign-in token; it's kept as before")
+    }
+
     private fun read(): Session {
-        val token = prefs.getString("token", null) ?: return Session()
+        val stored = prefs.getString("token", null) ?: return Session()
+        val token = if (SealedText.isSealed(stored)) {
+            // One more try when the keystore didn't answer: a moment's hiccup shouldn't sign anyone out.
+            val opened = TokenVault.open(stored).let { if (it == TokenVault.Opened.Unavailable) TokenVault.open(stored) else it }
+            when (opened) {
+                is TokenVault.Opened.Token -> opened.value
+                TokenVault.Opened.Lost -> {
+                    // Its key is gone for good (it never leaves the phone, so a moved copy can't be read): signed out.
+                    NetLog.event("session", "the saved sign-in token can't be unsealed any more; signed out")
+                    prefs.edit().clear().apply()
+                    return Session()
+                }
+                TokenVault.Opened.Unavailable -> {
+                    // Kept as it is: the next start tries again.
+                    NetLog.event("session", "the keystore didn't answer; signed out until the next start")
+                    return Session()
+                }
+            }
+        } else {
+            stored
+        }
         val userId = prefs.getLong("userId", 0L).takeIf { it > 0 } ?: return Session()
+        // A token kept before v0.25 is sealed now.
+        if (!SealedText.isSealed(stored)) TokenVault.seal(token)?.let { prefs.edit().putString("token", it).apply() }
         val nickname = prefs.getString("nickname", null)
         val profile = nickname?.let {
             UserProfile(

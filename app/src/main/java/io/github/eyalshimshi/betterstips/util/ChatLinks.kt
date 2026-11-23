@@ -1,20 +1,25 @@
 package io.github.eyalshimshi.betterstips.util
 
 import io.github.eyalshimshi.betterstips.data.model.SITE_URL
+import io.github.eyalshimshi.betterstips.data.model.TagFeed
 
 /**
- * Stips links in chat messages (v0.18): the first link to a Stips question or profile shows as a card in its bubble.
- * When the link has a line of its own, as "reply in private" writes it, the card takes its place, as a reply's quote
- * takes the place of its carets; a link inside a sentence stays where it is, with the card above the words. Pure.
+ * Stips links in chat messages (v0.18): the first link to a Stips question or profile, or to a shared feed (v0.25),
+ * shows as a card in its bubble. When the link has a line of its own, as "reply in private" writes it, the card takes
+ * its place, as a reply's quote takes the place of its carets; a link inside a sentence stays where it is, with the
+ * card above the words. Pure.
  */
 object ChatLinks {
-    /** What a card shows: a question or a person, by the [link] as written. */
+    /** What a card shows: a question, a person, or a feed, by the [link] as written. */
     sealed interface Target {
         val link: String
 
         data class Question(val id: Long, override val link: String) : Target
 
         data class Profile(val id: Long, override val link: String) : Target
+
+        /** A feed someone shared (v0.25): everything the card shows is in the link, so it asks nothing. */
+        data class Feed(val feed: TagFeed, override val link: String) : Target
     }
 
     /**
@@ -26,10 +31,11 @@ object ChatLinks {
     /** The link "reply in private" writes for question [id]. */
     fun questionLink(id: Long): String = "$SITE_URL/ask/$id"
 
-    /** A card's target for [link], or null when it isn't a Stips question or profile. */
+    /** A card's target for [link], or null when it isn't a Stips question or profile, or a shared feed. */
     fun target(link: String): Target? {
         Links.questionId(link)?.let { return Target.Question(it, link) }
         Links.profileId(link)?.let { return Target.Profile(it, link) }
+        TagFeedRules.fromShareLink(link, Links.SHARED_FEED_ID)?.let { return Target.Feed(it, link) }
         return null
     }
 

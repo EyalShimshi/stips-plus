@@ -6,6 +6,8 @@ import io.github.eyalshimshi.betterstips.data.model.HotWindow
 import io.github.eyalshimshi.betterstips.data.model.Question
 import io.github.eyalshimshi.betterstips.data.model.TagFeed
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -103,9 +105,11 @@ class RulesV23Test {
         assertEquals("the other language when one is missing", "רק עברית", list[1].text.pick(hebrew = false))
         assertTrue(AnnouncementRules.parse("not json").isEmpty())
         assertTrue(AnnouncementRules.parse(null).isEmpty())
-        assertTrue(AnnouncementRules.parse(repoFile("announcements.json").readText()).isEmpty())
+        // The file every app reads: each announcement in it is one the app can read, none left out.
+        val repo = repoFile("announcements.json").readText()
+        val posted = Json.parseToJsonElement(repo).jsonObject.getValue("announcements").jsonArray.size
+        assertEquals(posted, AnnouncementRules.parseOrNull(repo)?.size)
         // An empty list is a file read: announcements taken down reach every app. Only a file that isn't one fails.
-        assertEquals(emptyList<AnnouncementRules.Announcement>(), AnnouncementRules.parseOrNull(repoFile("announcements.json").readText()))
         assertEquals(emptyList<AnnouncementRules.Announcement>(), AnnouncementRules.parseOrNull("""{"about":"x","announcements":[]}"""))
         assertNull(AnnouncementRules.parseOrNull("{}"))
         assertNull(AnnouncementRules.parseOrNull("<html>Rate limit</html>"))

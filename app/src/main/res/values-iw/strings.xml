@@ -123,11 +123,11 @@
     <string name="password">סיסמה</string>
     <string name="show_password">הצגת הסיסמה</string>
     <string name="hide_password">הסתרת הסיסמה</string>
-    <string name="sign_in_privacy">הסיסמה נשלחת רק לסטיפס. האפליקציה שומרת רק את אסימון ההתחברות שסטיפס מחזיר.</string>
+    <string name="sign_in_privacy">הסיסמה נשלחת רק לסטיפס, פעם אחת, בחיבור מוצפן (HTTPS), ולא נשמרת. האפליקציה שומרת רק את אסימון ההתחברות שסטיפס מחזיר, מוצפן בטלפון.</string>
     <string name="sign_in_create_account">יצירת חשבון בסטיפס</string>
     <string name="sign_in_forgot">שכחת את הסיסמה?</string>
     <string name="sign_in_failed">סטיפס לא קיבל את האימייל והסיסמה האלה.</string>
-    <string name="disclaimer">אפליקציה עצמאית, ללא קשר לסטיפס.</string>
+    <string name="disclaimer">אפליקציה עצמאית, ללא קשר לסטיפס. היא ניתנת כמות שהיא, בלי שום אחריות: השימוש בה על אחריותך.</string>
 
     <!-- Settings -->
     <string name="settings_title">הגדרות</string>
@@ -583,7 +583,7 @@
     <string name="settings_sign_in_summary">כדי לענות, לשאול, לשוחח ולקבל התראות</string>
     <string name="settings_appearance">מראה</string>
     <string name="settings_privacy_safety">פרטיות ובטיחות</string>
-    <string name="settings_privacy_safety_summary">מצב אנונימי, תוכן מוסתר</string>
+    <string name="settings_privacy_safety_summary">מצב אנונימי, תוכן מוסתר, מסך פרטי ונעילת שיחות</string>
     <string name="settings_stips_summary">יצירת קשר, חוקי האתר, אודות סטיפס</string>
     <string name="settings_about_summary">גרסה %1$s, ההיכרות, מצב מומחה</string>
     <string name="settings_expert_group">למתקדמים</string>
@@ -1041,10 +1041,7 @@
     <string name="settings_your_feeds">הפידים שלך</string>
     <string name="feed_move_up">הזזה למעלה</string>
     <string name="feed_move_down">הזזה למטה</string>
-    <string name="feed_shared_title">להוסיף את הפיד \"%1$s\"?</string>
     <string name="feed_shared_excluded">משמיט את %1$s</string>
-    <string name="feed_shared_add">הוספת הפיד</string>
-    <string name="feed_shared_not_now">לא עכשיו</string>
     <string name="feed_unreadable">סטיפס לא הצליח לקרוא כרגע את %1$s. ננסה שוב מאוחר יותר.</string>
     <string name="feed_emoji_add">בחירת אימוג\'י</string>
     <string name="feed_emoji_change">אימוג\'י: %1$s. אפשר להקיש כדי להחליף</string>
@@ -1071,5 +1068,56 @@
         <item quantity="two">שני פידים</item>
         <item quantity="many">%d פידים</item>
         <item quantity="other">%d פידים</item>
+    </plurals>
+    <!-- v0.25: voice notes (Vocaroo) -->
+    <string name="voice_note">הקלטה קולית</string>
+    <string name="voice_loading">טוען…</string>
+    <string name="voice_failed">לא הצלחנו לנגן. אפשר לנסות שוב</string>
+    <string name="voice_play">השמעת ההקלטה</string>
+    <string name="voice_pause">השהיה</string>
+    <string name="voice_speed">מהירות %1$s×</string>
+    <string name="voice_actions">אפשרויות ההקלטה</string>
+    <string name="voice_open_vocaroo">פתיחה ב-Vocaroo</string>
+    <!-- v0.25: shared feeds -->
+    <string name="link_card_open_feed">פתיחת הפיד</string>
+    <string name="feed_preview_title">פיד ששותף</string>
+    <string name="feed_link_unreadable">אי אפשר לקרוא את הקישור לפיד הזה.</string>
+    <string name="feed_preview_full">יש לך כבר %1$d פידים, המספר המרבי. כדי להוסיף את הפיד הזה צריך למחוק אחד.</string>
+    <string name="feed_preview_yours">כבר בפידים שלך: לפתיחה</string>
+    <string name="feed_preview_add">הוספה לפידים שלי</string>
+    <!-- v0.25: the privacy screen, the chats lock, security and thanks -->
+    <string name="settings_privacy_screen_group">מסך פרטי</string>
+    <string name="settings_hide_recents">הסתרה באפליקציות האחרונות</string>
+    <string name="settings_hide_recents_summary">באפליקציות האחרונות יופיע כרטיס ריק במקום מה שעל המסך</string>
+    <string name="settings_hide_recents_summary_old">באפליקציות האחרונות יופיע כרטיס ריק. בגרסת האנדרואיד הזו זה חוסם גם צילומי מסך</string>
+    <string name="settings_block_screenshots">חסימת צילומי מסך</string>
+    <string name="settings_block_screenshots_summary">אי אפשר לצלם או להקליט את המסך של Stips+</string>
+    <string name="settings_chat_lock_group">נעילת שיחות</string>
+    <string name="settings_chat_lock">נעילת השיחות</string>
+    <string name="settings_chat_lock_summary">השיחות נפתחות רק בטביעת אצבע, בזיהוי פנים או בנעילת המסך</string>
+    <string name="settings_chat_lock_unavailable">קודם צריך להגדיר נעילת מסך בטלפון</string>
+    <string name="settings_chat_lock_after">נעילה מחדש</string>
+    <string name="chat_lock_after_now">מיד כשיוצאים מהאפליקציה</string>
+    <string name="chat_lock_prompt_title">פתיחת השיחות</string>
+    <string name="chat_lock_prompt_subtitle">בטביעת אצבע, בזיהוי פנים או בנעילת המסך</string>
+    <string name="chat_lock_locked_title">השיחות נעולות</string>
+    <string name="chat_lock_locked_body">אפשר לפתוח אותן בטביעת אצבע, בזיהוי פנים או בנעילת המסך. את הנעילה מכבים בהגדרות, בעמוד פרטיות ובטיחות.</string>
+    <string name="chat_lock_unlock">פתיחה</string>
+    <string name="widget_chat_locked">🔒 נעול</string>
+    <string name="settings_security_group">אבטחה</string>
+    <string name="settings_security_doc">איך Stips+ שומר על החשבון שלך</string>
+    <string name="settings_security_doc_summary">מה נשלח, מה נשמר בטלפון ואיך מדווחים על בעיה (ב-GitHub)</string>
+    <string name="settings_thanks_group">תודות</string>
+    <plurals name="chat_lock_after_minutes">
+        <item quantity="one">אחרי דקה מחוץ לאפליקציה</item>
+        <item quantity="two">אחרי שתי דקות מחוץ לאפליקציה</item>
+        <item quantity="many">אחרי %d דקות מחוץ לאפליקציה</item>
+        <item quantity="other">אחרי %d דקות מחוץ לאפליקציה</item>
+    </plurals>
+    <plurals name="widget_chat_locked_new">
+        <item quantity="one">🔒 הודעה חדשה</item>
+        <item quantity="two">🔒 שתי הודעות חדשות</item>
+        <item quantity="many">🔒 %d הודעות חדשות</item>
+        <item quantity="other">🔒 %d הודעות חדשות</item>
     </plurals>
 </resources>

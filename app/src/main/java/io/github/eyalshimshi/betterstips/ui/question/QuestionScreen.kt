@@ -186,6 +186,7 @@ import io.github.eyalshimshi.betterstips.ui.components.ExpertLine
 import io.github.eyalshimshi.betterstips.ui.components.FooterNote
 import io.github.eyalshimshi.betterstips.ui.components.ImageViewerDialog
 import io.github.eyalshimshi.betterstips.ui.components.LinkifiedText
+import io.github.eyalshimshi.betterstips.ui.components.VoiceNotes
 import io.github.eyalshimshi.betterstips.ui.components.LocalAppContainer
 import io.github.eyalshimshi.betterstips.ui.components.LocalReplyInPrivate
 import io.github.eyalshimshi.betterstips.ui.feeds.LocalAddTagToFeed
@@ -234,6 +235,7 @@ import io.github.eyalshimshi.betterstips.util.CredRules
 import io.github.eyalshimshi.betterstips.util.EmojiFilter
 import io.github.eyalshimshi.betterstips.util.Links
 import io.github.eyalshimshi.betterstips.util.ReplyRefs
+import io.github.eyalshimshi.betterstips.util.Vocaroo
 import io.github.eyalshimshi.betterstips.SpecialAccounts
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -1295,19 +1297,26 @@ private fun QuestionHero(
     }
 }
 
-/** The question's text, clamped to 3 lines so the answers start early. */
+/**
+ * The question's text, clamped to 3 lines so the answers start early. Vocaroo recordings in it are voice-note rows
+ * under it (v0.25); a text that's only their links is just the rows.
+ */
 @Composable
 private fun QuestionBody(body: String) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var overflowing by remember { mutableStateOf(false) }
+    val recordings = remember(body) { Vocaroo.find(body) }
+    val textShown = remember(body) { !Vocaroo.onlyRecordings(body) }
     Column(Modifier.padding(horizontal = 16.dp)) {
-        LinkifiedText(
-            body,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = if (expanded) Int.MAX_VALUE else 3,
-            onOverflow = { if (!expanded) overflowing = it },
-        )
-        if (overflowing || expanded) {
+        if (textShown) {
+            LinkifiedText(
+                body,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = if (expanded) Int.MAX_VALUE else 3,
+                onOverflow = { if (!expanded) overflowing = it },
+            )
+        }
+        if (textShown && (overflowing || expanded)) {
             Text(
                 stringResource(if (expanded) R.string.show_less else R.string.show_more),
                 style = MaterialTheme.typography.labelLarge,
@@ -1318,6 +1327,7 @@ private fun QuestionBody(body: String) {
                     .padding(vertical = 6.dp),
             )
         }
+        VoiceNotes(recordings, Modifier.padding(top = if (textShown) 4.dp else 0.dp))
     }
 }
 
@@ -1614,13 +1624,19 @@ private fun AnswerCard(
                 val inBody = remember(reply, stipsOrder) {
                     reply?.inBody?.mapNotNull { (range, index) -> stipsOrder.getOrNull(index)?.let { TextTarget(range, it.id) } }.orEmpty()
                 }
-                LinkifiedText(
-                    reply?.body ?: answer.text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(top = 6.dp, end = 10.dp),
-                    targets = inBody,
-                    onTarget = onJump,
-                )
+                val answerBody = reply?.body ?: answer.text
+                // Vocaroo recordings are voice notes under the text (v0.25); only their links, and they're all there is.
+                val recordings = remember(answerBody) { Vocaroo.find(answerBody) }
+                if (!Vocaroo.onlyRecordings(answerBody)) {
+                    LinkifiedText(
+                        answerBody,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 6.dp, end = 10.dp),
+                        targets = inBody,
+                        onTarget = onJump,
+                    )
+                }
+                VoiceNotes(recordings, Modifier.padding(top = 4.dp, end = 10.dp))
                 answer.links.forEach { link ->
                     AttachedLink(
                         link.url,

@@ -95,12 +95,19 @@ class MainActivity : ComponentActivity() {
         Notifier.sync(applicationContext, container.settings.settings.value)
         // Your feeds' lists are brought up to date while the app is on screen (v0.24).
         container.feedWarmer.start()
+        // Chats lock again after the minutes chosen away (v0.25).
+        container.chatLock.cameBack(System.currentTimeMillis(), container.settings.settings.value.chatLockMinutes)
     }
 
     override fun onStop() {
         Notifier.appVisible = false
         val container = (application as StipsApp).container
         container.feedWarmer.stop()
+        // Leaving the app, not turning the phone: a rotation neither locks chats nor pauses a voice note.
+        if (!isChangingConfigurations) {
+            container.chatLock.left(System.currentTimeMillis())
+            container.voicePlayer.appLeft()
+        }
         // The first check after leaving comes a few minutes later.
         Notifier.sync(applicationContext, container.settings.settings.value)
         super.onStop()

@@ -50,6 +50,7 @@ import androidx.glance.text.TextStyle
 import io.github.eyalshimshi.betterstips.MainActivity
 import io.github.eyalshimshi.betterstips.R
 import io.github.eyalshimshi.betterstips.StipsApp
+import io.github.eyalshimshi.betterstips.ui.lock.DeviceAuth
 import io.github.eyalshimshi.betterstips.util.Shortcuts
 import java.time.ZoneId
 
@@ -83,8 +84,10 @@ class ChatsWidget : GlanceAppWidget() {
             val settings by container.settings.settings.collectAsState()
             val accent = remember(settings.accent) { accentColors(settings.accent) }
             val dynamic = settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            // With the chats lock on (v0.25), the home screen shows who wrote and how many, not what.
+            val locked = settings.chatLock && DeviceAuth.available(context)
             GlanceTheme(colors = if (dynamic) GlanceTheme.colors else accent) {
-                ChatsWidgetContent(state, session.signedIn)
+                ChatsWidgetContent(state, session.signedIn, locked)
             }
         }
     }
@@ -98,7 +101,7 @@ class RefreshChatsWidget : ActionCallback {
 }
 
 @Composable
-private fun ChatsWidgetContent(state: ChatsWidgetFeed.State, signedIn: Boolean) {
+private fun ChatsWidgetContent(state: ChatsWidgetFeed.State, signedIn: Boolean, locked: Boolean) {
     val context = LocalContext.current
     val refresh = actionRunCallback<RefreshChatsWidget>()
     val openChatsAction = actionStartActivity(openChats(context))
@@ -131,7 +134,7 @@ private fun ChatsWidgetContent(state: ChatsWidgetFeed.State, signedIn: Boolean) 
     ) {
         when {
             !signedIn -> WidgetMessage(context.getString(R.string.widget_chats_signed_out), onClick = openChatsAction)
-            state.chats.isNotEmpty() -> ChatList(state.chats)
+            state.chats.isNotEmpty() -> ChatList(state.chats, locked)
             !state.loaded || state.refreshing -> WidgetMessage(context.getString(R.string.widget_loading), onClick = null)
             state.failed -> WidgetMessage(context.getString(R.string.widget_chats_failed), onClick = refresh)
             else -> WidgetMessage(context.getString(R.string.widget_chats_empty), onClick = refresh)
@@ -140,18 +143,18 @@ private fun ChatsWidgetContent(state: ChatsWidgetFeed.State, signedIn: Boolean) 
 }
 
 @Composable
-private fun ChatList(chats: List<ChatsWidgetFeed.Chat>) {
+private fun ChatList(chats: List<ChatsWidgetFeed.Chat>, locked: Boolean) {
     val now = remember(chats) { System.currentTimeMillis() }
     LazyColumn(GlanceModifier.fillMaxSize()) {
         items(chats, itemId = { it.userId }) { chat ->
-            ChatRow(chat, now)
+            ChatRow(chat, now, locked)
         }
     }
 }
 
-/** The name and time, then the last message and the unread count. Unread chats are bold. */
+/** The name and time, then the last message and the unread count. Unread chats are bold. [locked]: no message text. */
 @Composable
-private fun ChatRow(chat: ChatsWidgetFeed.Chat, now: Long) {
+private fun ChatRow(chat: ChatsWidgetFeed.Chat, now: Long, locked: Boolean) {
     val context = LocalContext.current
     val unread = chat.unread > 0
     val locale = context.resources.configuration.locales[0]
@@ -188,7 +191,12 @@ private fun ChatRow(chat: ChatsWidgetFeed.Chat, now: Long) {
         Spacer(GlanceModifier.height(2.dp))
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = if (chat.fromMe) context.getString(R.string.widget_chat_you, chat.text) else chat.text,
+                text = when {
+                    locked && unread -> context.resources.getQuantityString(R.plurals.widget_chat_locked_new, chat.unread, chat.unread)
+                    locked -> context.getString(R.string.widget_chat_locked)
+                    chat.fromMe -> context.getString(R.string.widget_chat_you, chat.text)
+                    else -> chat.text
+                },
                 style = TextStyle(
                     color = if (unread) GlanceTheme.colors.onSurface else GlanceTheme.colors.onSurfaceVariant,
                     fontSize = 13.sp,

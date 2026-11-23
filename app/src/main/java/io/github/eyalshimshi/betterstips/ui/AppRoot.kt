@@ -4,6 +4,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.view.WindowManager
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -68,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -92,6 +96,7 @@ import io.github.eyalshimshi.betterstips.AppContainer
 import io.github.eyalshimshi.betterstips.R
 import io.github.eyalshimshi.betterstips.crash.CrashReporter
 import io.github.eyalshimshi.betterstips.data.StartTab
+import io.github.eyalshimshi.betterstips.data.VoicePlayer
 import io.github.eyalshimshi.betterstips.data.api.RateGuard
 import io.github.eyalshimshi.betterstips.data.api.ServerClock
 import io.github.eyalshimshi.betterstips.data.model.MyList
@@ -137,9 +142,10 @@ import io.github.eyalshimshi.betterstips.ui.signin.SignInScreen
 import io.github.eyalshimshi.betterstips.ui.signin.IntroScreen
 import io.github.eyalshimshi.betterstips.ui.theme.LocalAppSettings
 import io.github.eyalshimshi.betterstips.ui.feeds.AddTagToFeedSheet
+import io.github.eyalshimshi.betterstips.ui.feeds.FeedPreviewScreen
 import io.github.eyalshimshi.betterstips.ui.feeds.FeedsScreen
 import io.github.eyalshimshi.betterstips.ui.feeds.LocalAddTagToFeed
-import io.github.eyalshimshi.betterstips.ui.feeds.SharedFeedDialog
+import io.github.eyalshimshi.betterstips.ui.lock.ChatLockGate
 import io.github.eyalshimshi.betterstips.data.model.TagFeed
 import androidx.compose.material.icons.filled.DynamicFeed
 import androidx.compose.material.icons.outlined.DynamicFeed
@@ -152,8 +158,11 @@ import io.github.eyalshimshi.betterstips.util.DeepLink
 import io.github.eyalshimshi.betterstips.util.ImageLinks
 import io.github.eyalshimshi.betterstips.util.JumpRules
 import io.github.eyalshimshi.betterstips.util.Links
+import io.github.eyalshimshi.betterstips.util.PrivacyRules
 import io.github.eyalshimshi.betterstips.util.Shortcuts
+import io.github.eyalshimshi.betterstips.util.TagFeedRules
 import io.github.eyalshimshi.betterstips.util.UpdateRules
+import io.github.eyalshimshi.betterstips.util.Vocaroo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -185,6 +194,15 @@ object Routes {
     const val FEEDS = "feeds"
     const val ASK = "ask?channel={channel}"
     const val SEND_TO = "send?text={text}"
+
+    /** A feed someone shared, shown before it's added (v0.25): its link, as it came. */
+    const val FEED_LINK = "feedlink?link={link}"
+
+    /** The screens the chats lock covers (v0.25): the Chats tab, every chat, and sending to chats. */
+    val LOCKED = setOf(CHATS, CONVERSATION, SEND_TO)
+
+    /** A shared feed's own screen (v0.25). */
+    fun feedLink(feed: TagFeed) = "feedlink?link=" + Uri.encode(TagFeedRules.shareLink(feed))
 
     /** A question; from a notification, with where to open it (v0.10). */
     fun question(id: Long, focus: QuestionFocus? = null): String =
@@ -309,8 +327,6 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
     val currentOnLinkHandled by rememberUpdatedState(onLinkHandled)
     // A notice from Stips' team whose phone notification was tapped (v0.18, #27): shown in full over the app.
     var teamNotice by remember { mutableStateOf<StipsNotification?>(null) }
-    // A feed someone shared (#40): offered to add, from a link outside the app or inside it.
-    val sharedFeed = remember { mutableStateOf<TagFeed?>(null) }
     // A tag on its way into one of your feeds (#40): a long press on a question's #tag, or the tag page's button.
     var feedTag by remember { mutableStateOf<String?>(null) }
     val addTagToFeed = remember { { tag: String -> feedTag = tag } }
@@ -319,7 +335,6 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
         welcome = false
         when (link) {
             is DeepLink.TeamNotice -> teamNotice = link.notice
-            is DeepLink.Feed -> sharedFeed.value = link.feed
             else -> openLink(navController, link)
         }
         currentOnLinkHandled()
@@ -396,16 +411,46 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
         }
     }
 
-    // Stips links inside the app (questions, profiles, chats) open here; picture links open in the viewer (#15);
-    // everything else goes to the browser.
+    // The privacy screen (v0.25): no screenshots, or a blank card in recent apps; and from Android 13, chats stay out of
+    // recent apps while the chats lock is on.
+    val activity = LocalActivity.current
+    val appSettings = LocalAppSettings.current
+    val privacy = PrivacyRules.window(
+        Build.VERSION.SDK_INT,
+        hideRecents = appSettings.hideInRecents,
+        blockScreenshots = appSettings.blockScreenshots,
+        onLockedChats = appSettings.chatLock && route != null && route in Routes.LOCKED,
+    )
+    LaunchedEffect(activity, privacy) {
+        val current = activity ?: return@LaunchedEffect
+        val window = current.window
+        if (privacy.secure) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) current.setRecentsScreenshotEnabled(privacy.recentsPreview)
+    }
+    // A voice note playing (v0.25) keeps the screen on, as a video would, and pauses when another screen comes on top.
+    val voice by container.voicePlayer.state.collectAsStateWithLifecycle()
+    val voicePlaying = voice.status == VoicePlayer.Status.Playing
+    val view = LocalView.current
+    DisposableEffect(view, voicePlaying) {
+        view.keepScreenOn = voicePlaying
+        onDispose { view.keepScreenOn = false }
+    }
+    LaunchedEffect(backStack?.id) { container.voicePlayer.screenShown(backStack?.id) }
+
+    // Stips links inside the app (questions, profiles, chats, shared feeds) open here; picture links open in the viewer
+    // (#15); a Vocaroo link plays in its row when one is on screen (v0.25); everything else goes to the browser.
     val imageLink = remember { mutableStateOf<ImageLinks.Source?>(null) }
     val uriHandler = remember(navController) {
         object : UriHandler {
             override fun openUri(uri: String) {
+                Vocaroo.recording(uri)?.let { recording -> if (container.voicePlayer.toggleLink(recording)) return }
                 val link = Links.deepLink(uri)
                 val image = if (link == null) ImageLinks.classify(uri) else null
                 when {
-                    link is DeepLink.Feed -> sharedFeed.value = link.feed
                     link != null -> openLink(navController, link)
                     image != null -> imageLink.value = image
                     else -> openInBrowser(context, uri)
@@ -523,21 +568,6 @@ fun AppRoot(pendingLink: DeepLink?, onLinkHandled: () -> Unit) {
     }
     imageLink.value?.let { source -> ImageLinkViewer(source, onDismiss = { imageLink.value = null }) }
     feedTag?.let { tag -> AddTagToFeedSheet(tag, onDismiss = { feedTag = null }) }
-    sharedFeed.value?.let { feed ->
-        SharedFeedDialog(
-            feed,
-            onAdd = {
-                val store = container.tagFeeds
-                val added = feed.copy(id = store.newId())
-                if (store.save(added)) {
-                    store.open(added.id)
-                    navigateToTab(navController, Routes.FEEDS)
-                }
-                sharedFeed.value = null
-            },
-            onDismiss = { sharedFeed.value = null },
-        )
-    }
     // Not when a link, a shortcut or a notification opened the app (#41): that's what the person came for, and the
     // launch test's shortcut checks see their own screens. The next time the app is opened, it shows.
     val openedByLink = rememberSaveable { pendingLink != null }
@@ -607,8 +637,8 @@ private fun openLink(navController: NavHostController, link: DeepLink) {
         // Shown over the app by AppRoot, not a screen to go to (v0.18).
         is DeepLink.TeamNotice -> Unit
         is DeepLink.SendTo -> navController.navigate(Routes.sendTo(link.text))
-        // A shared feed (#40) is offered by AppRoot first; on its own, the Feeds tab.
-        is DeepLink.Feed -> navigateToTab(navController, Routes.FEEDS)
+        // A shared feed (v0.25): its own screen, with its questions and Add.
+        is DeepLink.Feed -> navController.navigate(Routes.feedLink(link.feed)) { launchSingleTop = true }
     }
 }
 
@@ -854,7 +884,9 @@ private fun AppNavHost(navController: NavHostController, modifier: Modifier, onN
             )
         }
         composable(Routes.CHATS) {
-            ChatsScreen(onOpenConversation = ::openConversation, onSignIn = ::signIn)
+            ChatLockGate(onBack = null) {
+                ChatsScreen(onOpenConversation = ::openConversation, onSignIn = ::signIn)
+            }
         }
         composable(Routes.PROFILE) {
             ProfileScreen(
@@ -937,13 +969,15 @@ private fun AppNavHost(navController: NavHostController, modifier: Modifier, onN
                 },
             ),
         ) { entry ->
-            ConversationScreen(
-                userId = entry.arguments?.getLong("userId") ?: 0L,
-                name = entry.arguments?.getString("name").orEmpty(),
-                onBack = ::back,
-                onForward = ::sendTo,
-                about = entry.arguments?.getLong("about")?.takeIf { it > 0L },
-            )
+            ChatLockGate(onBack = ::back) {
+                ConversationScreen(
+                    userId = entry.arguments?.getLong("userId") ?: 0L,
+                    name = entry.arguments?.getString("name").orEmpty(),
+                    onBack = ::back,
+                    onForward = ::sendTo,
+                    about = entry.arguments?.getLong("about")?.takeIf { it > 0L },
+                )
+            }
         }
         composable(
             Routes.SEND_TO,
@@ -955,32 +989,42 @@ private fun AppNavHost(navController: NavHostController, modifier: Modifier, onN
             ),
         ) { entry ->
             val notesName = stringResource(R.string.notes_title)
-            SendToScreen(
-                text = entry.arguments?.getString("text").orEmpty(),
-                onClose = ::back,
-                onSignIn = ::signIn,
-                onSent = { sent, failed ->
-                    // One chat: it opens, as in WhatsApp (or the chat it was forwarded from shows again). Several: back.
-                    val one = sent.singleOrNull()
-                    val oneId = one?.userId
-                    val previous = navController.previousBackStackEntry
-                    val sameChat = previous != null && previous.destination.route == Routes.CONVERSATION &&
-                        previous.arguments?.getLong("userId") == oneId
-                    if (one != null && oneId != null && !sameChat) {
-                        navController.navigate(Routes.conversation(oneId, one.nickname)) {
-                            popUpTo(Routes.SEND_TO) { inclusive = true }
+            ChatLockGate(onBack = ::back) {
+                SendToScreen(
+                    text = entry.arguments?.getString("text").orEmpty(),
+                    onClose = ::back,
+                    onSignIn = ::signIn,
+                    onSent = { sent, failed ->
+                        // One chat: it opens, as in WhatsApp (or the chat it was forwarded from shows again). Several: back.
+                        val one = sent.singleOrNull()
+                        val oneId = one?.userId
+                        val previous = navController.previousBackStackEntry
+                        val sameChat = previous != null && previous.destination.route == Routes.CONVERSATION &&
+                            previous.arguments?.getLong("userId") == oneId
+                        if (one != null && oneId != null && !sameChat) {
+                            navController.navigate(Routes.conversation(oneId, one.nickname)) {
+                                popUpTo(Routes.SEND_TO) { inclusive = true }
+                            }
+                        } else {
+                            navController.popBackStack()
                         }
-                    } else {
-                        navController.popBackStack()
-                    }
-                    val names = failed.joinToString(", ") { if (it.userId == session.userId) notesName else it.nickname }
-                    val message = when {
-                        failed.isNotEmpty() -> context.getString(R.string.send_to_partly, names)
-                        sent.size > 1 -> context.resources.getQuantityString(R.plurals.send_to_sent, sent.size, sent.size)
-                        else -> null
-                    }
-                    if (message != null) onMessage(message)
-                },
+                        val names = failed.joinToString(", ") { if (it.userId == session.userId) notesName else it.nickname }
+                        val message = when {
+                            failed.isNotEmpty() -> context.getString(R.string.send_to_partly, names)
+                            sent.size > 1 -> context.resources.getQuantityString(R.plurals.send_to_sent, sent.size, sent.size)
+                            else -> null
+                        }
+                        if (message != null) onMessage(message)
+                    },
+                )
+            }
+        }
+        composable(Routes.FEED_LINK, arguments = listOf(navArgument("link") { type = NavType.StringType })) { entry ->
+            FeedPreviewScreen(
+                link = entry.arguments?.getString("link").orEmpty(),
+                onBack = ::back,
+                onOpenQuestion = ::openQuestion,
+                onOpenFeeds = { navigateToTab(navController, Routes.FEEDS) },
             )
         }
         composable(Routes.MY_LIST, arguments = listOf(navArgument("kind") { type = NavType.StringType })) { entry ->
